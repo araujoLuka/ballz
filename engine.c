@@ -1,13 +1,6 @@
 #include "engine.h"
-#include "ball.h"
-#include "block.h"
-#include "game.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include <allegro5/allegro_font.h>
-#include <allegro5/allegro_ttf.h>
-#include <allegro5/allegro_image.h>
-#include <allegro5/allegro_primitives.h>
 #define FPS 60
 
 ALLEGRO_BITMAP *load_bitmap_at_size(const char *filename, int w, int h)
@@ -159,7 +152,7 @@ void *load_fonts()
 
     if (!f->f18 || !f->f22 || !f->f26)
     {
-        destroy_fonts((void**)&f);
+        destroy_fonts(&f);
         fprintf(stderr, "Falha ao carregar fontes\n");
         return NULL;
     }
@@ -167,11 +160,11 @@ void *load_fonts()
     return f;
 }
 
-void destroy_fonts(void **f)
+void destroy_fonts(ALLEGRO_FONT_STRUCT **f)
 {
-    al_destroy_font(((ALLEGRO_FONT_STRUCT*)*f)->f18);
-    al_destroy_font(((ALLEGRO_FONT_STRUCT*)*f)->f22);
-    al_destroy_font(((ALLEGRO_FONT_STRUCT*)*f)->f26);
+    al_destroy_font((*f)->f18);
+    al_destroy_font((*f)->f22);
+    al_destroy_font((*f)->f26);
     free(*f);
     *f = NULL;
 }
@@ -180,7 +173,7 @@ void draw_blocks(engine_t *e, matrix_bl *m)
 {
     ALLEGRO_COLOR BG_COLOR;
     ALLEGRO_COLOR BL_COLOR;
-    block_t *b;
+    nodo_bk *b;
     float aux;
 
     BG_COLOR = al_map_rgb(20, 20, 20);
@@ -194,57 +187,46 @@ void draw_blocks(engine_t *e, matrix_bl *m)
                 {
                 case 1:
                     BL_COLOR = al_map_rgb(100, 170, 70);
-                    aux = al_get_font_line_height(e->fonts->f22)/2;
+                    
                     al_draw_filled_rectangle(b->x, b->y, b->w, b->h, BL_COLOR);
+                    
+                    aux = al_get_font_line_height(e->fonts->f22)/2;
                     al_draw_textf(e->fonts->f22, BG_COLOR,  b->cx,  b->cy - aux, -1, "%d",  b->valor);
                     break;
                 case 2:
                     BL_COLOR = al_map_rgb(240,240,70);
                     aux = (b->w - b->x)/2;
                     al_draw_filled_circle(b->x + aux, b->y + aux, aux, BL_COLOR);
-                    al_draw_filled_circle(b->x + aux, b->y + aux, aux * 0.8, BG_COLOR);
+                    al_draw_filled_circle(b->x + aux, b->y + aux, aux * 0.7, BG_COLOR);
                     break;
                 case 3:
                     BL_COLOR = al_map_rgb(255,255,255);
                     aux = (b->w - b->x)/2;
-                    al_draw_filled_circle(b->x + aux, b->y + aux, aux * 1.7, BL_COLOR);
-                    al_draw_filled_circle(b->x + aux, b->y + aux, aux * 1.5, BG_COLOR);
-                    al_draw_filled_circle(b->x + aux, b->y + aux, aux * 0.9, BL_COLOR);
+                    al_draw_filled_circle(b->x + aux, b->y + aux, aux, BL_COLOR);
+                    al_draw_filled_circle(b->x + aux, b->y + aux, aux * 0.85, BG_COLOR);
+                    al_draw_filled_circle(b->x + aux, b->y + aux, aux * 0.4, BL_COLOR);
                     break;
                 }
             }
         }
 }
 
-void draw_balls(list_b *b)
-{
-    ball_t *aux;
-    aux = b->ini;    
-    
-    for (int i=0; i < b->tam; i++)
-    {
-        al_draw_bitmap(b->img, aux->cx - b->raio, aux->cy - b->raio, 0);
-        aux = aux->next;
-    }
-}
-
-void draw_aim(list_b *b, float dx, float dy)
+void draw_aim(ball_t *b, float dx, float dy)
 {
     float aim_x, aim_y;
     aim_x = b->ini->cx;
     aim_y = b->ini->cy;
 
     al_draw_bitmap(b->img, aim_x - b->raio, aim_y - b->raio, 0);
+    al_draw_filled_circle(b->ini->cx, b->ini->cy, 2, al_map_rgb(255,0,0));
     if (dy < -20)
+    {
         al_draw_line(aim_x, aim_y, aim_x + dx, aim_y + dy, al_map_rgb(255, 255, 255), 2);
+    }
 }
 
-void draw_game(engine_t *e, void *ptr_b, void *ptr_g, void *ptr_m, float dx, float dy, int pt, int coins)
+void draw_game(engine_t *e, ball_t *b, box_t *g, matrix_bl *m, float dx, float dy, int pt, int coins)
 {
-    list_b *b = ptr_b;
-    gb_t *g = ptr_g;
-    matrix_bl *m = ptr_m;
-
     al_clear_to_color(al_map_rgb(30, 30, 30));
     al_draw_filled_rectangle(g->x, g->y, g->w, g->h, al_map_rgb(20, 20, 20));
     al_draw_filled_circle(3*SCR_W/4 - b->raio*4, g->y * 0.5, b->raio*1.5, al_map_rgb(240,240,70));
@@ -255,15 +237,17 @@ void draw_game(engine_t *e, void *ptr_b, void *ptr_g, void *ptr_m, float dx, flo
     draw_blocks(e, m);
 
     if (b->launch)
-        draw_balls(b);
+    {
+        ball_draw(b);
+        if (b->n > 0)
+            al_draw_textf(e->fonts->f18, al_map_rgb(230, 230, 230), dx, dy + 10, -1, "%d x", b->n);
+    }
     else
         draw_aim(b, dx, dy);
 
     al_draw_bitmap(e->cursor, e->msestate.x, e->msestate.y, 0);
     
     al_flip_display();
-
-    al_rest(0.005);
 }
 
 void end_engine(engine_t **e)
@@ -272,7 +256,7 @@ void end_engine(engine_t **e)
     al_destroy_timer((*e)->timer);
     al_destroy_event_queue((*e)->queue);
     al_destroy_bitmap((*e)->cursor);
-    destroy_fonts((void**)&(*e)->fonts);
+    destroy_fonts(&(*e)->fonts);
     free(*e);
     *e = NULL;
 }

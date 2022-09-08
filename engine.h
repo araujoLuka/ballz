@@ -2,6 +2,15 @@
 #define ENGINE_H_
 
 #include <allegro5/allegro.h>
+#include <allegro5/allegro_font.h>
+#include <allegro5/allegro_ttf.h>
+#include <allegro5/allegro_image.h>
+#include <allegro5/allegro_primitives.h>
+
+#include "ball.h"
+#include "block.h"
+#include "object.h"
+
 #define SCR_W 480
 #define SCR_H 800
 
@@ -19,10 +28,12 @@ typedef struct AL_ATRIBUTES
 
 typedef struct GAME_FONTS
 {
-    void *f18;
-    void *f22;
-    void *f26;
+    ALLEGRO_FONT *f18;
+    ALLEGRO_FONT *f22;
+    ALLEGRO_FONT *f26;
 } ALLEGRO_FONT_STRUCT;
+
+ALLEGRO_BITMAP *load_bitmap_at_size(const char *filename, int w, int h);
 
 engine_t *start_engine();
 
@@ -30,9 +41,9 @@ int start_allegro();
 
 void *load_fonts();
 
-void destroy_fonts(void **f);
+void destroy_fonts(ALLEGRO_FONT_STRUCT **f);
 
-void draw_game(engine_t *e, void *ptr_b, void *ptr_g, void *ptr_m, float dx, float dy, int pt, int coins);
+void draw_game(engine_t *e, ball_t *b, box_t *g, matrix_bl *m, float dx, float dy, int pt, int coins);
 
 void end_engine(engine_t **e);
 
