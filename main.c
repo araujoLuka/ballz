@@ -1,29 +1,25 @@
-#include "ball.h"
-#include "game.h"
-#include "engine.h"
-#include "block.h"
+#include "sources/engine.h"
+#include "sources/states.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 
-typedef enum { START, MENU, GAME } states;
-
 int main()
 {
     engine_t *e;
-    states st = GAME;
+    states st = MENU;
 
     srand(time(NULL));
 
     e = start_engine();
     
-    while(1)
+    while(st != END)
     {
         switch (st)
         {
-        case START: state_start(); break;
-        case MENU: state_menu(); break;
-        case GAME: state_game(e); break;
+        case START: /*state_start()*/; break;
+        case MENU: state_menu(e, &st); break;
+        case GAME: state_game(e, &st); break;
         default: break;
         }
     }

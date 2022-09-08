@@ -1,6 +1,7 @@
 #include "object.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 vet_t vet_make(float x, float y)
 {
@@ -16,6 +17,11 @@ vet_t *vet_destroy(vet_t *vetor)
 {
     free(vetor);
     return NULL;
+}
+
+float vet_len(vet_t v)
+{
+    return sqrt(v.x*v.x + v.y*v.y);
 }
 
 vet_t vet_dif(vet_t v1, vet_t v2)

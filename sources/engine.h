@@ -7,14 +7,17 @@
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro_primitives.h>
 
+#define SCR_W 480
+#define SCR_H 800
+
+typedef struct AL_ATRIBUTES engine_t;
+
 #include "ball.h"
 #include "block.h"
 #include "object.h"
 
-#define SCR_W 480
-#define SCR_H 800
 
-typedef struct AL_ATRIBUTES
+struct AL_ATRIBUTES
 {
     ALLEGRO_DISPLAY *disp;
     ALLEGRO_EVENT event;
@@ -24,16 +27,17 @@ typedef struct AL_ATRIBUTES
     struct GAME_FONTS *fonts;
     ALLEGRO_MOUSE_STATE msestate;
     ALLEGRO_KEYBOARD_STATE kbdstate;
-} engine_t;
+};
 
 typedef struct GAME_FONTS
 {
     ALLEGRO_FONT *f18;
     ALLEGRO_FONT *f22;
     ALLEGRO_FONT *f26;
+    ALLEGRO_FONT *f30;
+    ALLEGRO_FONT *f40;
+    ALLEGRO_FONT *f60;
 } ALLEGRO_FONT_STRUCT;
-
-ALLEGRO_BITMAP *load_bitmap_at_size(const char *filename, int w, int h);
 
 engine_t *start_engine();
 
@@ -43,7 +47,7 @@ void *load_fonts();
 
 void destroy_fonts(ALLEGRO_FONT_STRUCT **f);
 
-void draw_game(engine_t *e, ball_t *b, box_t *g, matrix_bl *m, float dx, float dy, int pt, int coins);
+ALLEGRO_BITMAP *load_bitmap_at_size(const char *filename, int w, int h);
 
 void end_engine(engine_t **e);
 

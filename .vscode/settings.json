@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "game.h": "c",
+        "states.h": "c",
+        "engine.h": "c",
+        "type_traits": "c"
+    }
+}

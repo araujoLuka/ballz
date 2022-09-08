@@ -20,6 +20,7 @@ struct balls
     ALLEGRO_BITMAP *img;
     float raio;
     nodo_b *ini;
+    nodo_b *first;
     int tam, n;
     int vel;
     int l_ctr;

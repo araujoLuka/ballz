@@ -21,6 +21,7 @@ vet_t *vet_destroy(vet_t *vetor);
 
 vet_t vet_dif(vet_t v1, vet_t v2);
 
+float vet_len(vet_t v);
 
 box_t *box_make(float x, float y, float w, float h);
 

@@ -19,6 +19,7 @@ ball_t *ball_list_make(float disp_w, float disp_h)
     b->raio = al_get_bitmap_width(b->img) / 2;
 
     b->ini = ball_make(disp_w / 2, disp_h - b->raio);
+    b->first = b->ini;
 
     b->tam = 1;
     b->n = 1;
@@ -65,13 +66,11 @@ int ball_insert(ball_t *b, int q)
 
     b->tam = b->tam + q;
     b->n = b->tam;
-    if (b->tam < 5)
-        b->n = 0;
 
     return 1;
 }
 
-void ball_launch(ball_t *b, vet_t *d, float scale)
+void ball_launch(ball_t *b, vet_t *d, float vel)
 {
     nodo_b *aux = b->ini;
     vet_t v;
@@ -84,8 +83,8 @@ void ball_launch(ball_t *b, vet_t *d, float scale)
 
     for (b->l_ctr=0; b->l_ctr < b->tam; b->l_ctr++)
     {
-        aux->sx = v.x * scale;
-        aux->sy = v.y * scale;
+        aux->sx = v.x * vel;
+        aux->sy = v.y * vel;
         aux = aux->next;
     }
     b->launch = true;
