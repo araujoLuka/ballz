@@ -1,34 +1,41 @@
 #ifndef BALL_H_
 #define BALL_H_
-#include <allegro5/allegro5.h>
-#include <allegro5/allegro_image.h>
 
 typedef struct ball
 {
-    float x, y;
+    double x, y;
     float sx, sy;
-    bool move;
+    int move;
+    struct ball *next;
 } ball_t;
 
-typedef struct group_balls
+typedef struct ball_list
 {
-    ALLEGRO_BITMAP *img;
-    ball_t **balls;
-    float vel;
-    float raio;
-    int n, allocs;
+    void *img;
+    ball_t *ini;
+    int tam;
+    int vel;
     int l_ctr;
-    bool launch;
-} ball_st;
+    float raio;
+    int launch;
+} list_b;
 
-ball_st *cria_struct_ball();
+list_b *make_ball_list(float disp_w, float disp_h);
 
-ball_t *cria_ball();
+ball_t *cria_ball(double x, double y);
 
-ball_st *insere_ball(ball_st *b, int q);
+int insert_ball(list_b *b, int q);
 
-void destroi_struct_ball(ball_st *b);
+void set_ball_speed(ball_t *b, float x, float y, float vel);
 
-void lancar_bola(ball_t *b, float x, float y, float vel);
+void collide_left(ball_t *b, int lim);
+
+void collide_right(ball_t *b, int lim);
+
+void collide_top(ball_t *b, int lim);
+
+void collide_bottom(ball_t *b, int lim);
+
+list_b *destroy_ball_list(list_b *b);
 
 #endif
