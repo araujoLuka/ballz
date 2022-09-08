@@ -7,6 +7,8 @@ typedef struct gameBox
     float w, h;
 }gb_t;
 
-gb_t *cria_gamebox(float scr_w, float scr_h);
+gb_t *game_make_box_p(float scr_w, float scr_h);
+
+void game_destroy(gb_t **g);
 
 #endif

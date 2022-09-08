@@ -1,36 +1,46 @@
-#include "libball.h"
+#include "ball.h"
 #include "game.h"
 #include "engine.h"
+#include "block.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 #define NUM_BUTTONS 3
 
 int main()
 {
     engine_t *e;
+    gb_t *g;
+    matrix_bl *m;
     list_b *b;
     ball_t *ball;
-    gb_t *g;
+    int erro = 0;
     bool done = false, mspress = false;
     float x0 = 0, y0 = 0;
-    double delta_x, delta_y;
+    double delta_x = 0, delta_y = 0;
     double current_time, last_time, delta_time;
-    double l_timer;
-    int points = 1, t_mult = 1;
+    double l_timer = 0;
+    int points = 1, t_mult = 1, nb = 0, coins = 0;
 
-    if (!(e = start_engine()))
-        return 1;
+    srand(time(NULL));
 
+    e = start_engine();
+    g = game_make_box_p(SCR_W, SCR_H);
+    m = block_matrix_make(g->w);
+    b = ball_list_make(g->w, g->h);
     
-    g = cria_gamebox(SCR_W, SCR_H);
-    b = make_ball_list(g->w, g->h);
-    ball = b->ini;
-    insert_ball(b, 69);
+    if (!e || !g || !m || !b)
+        erro = 1;
+    else
+    {
+        al_start_timer(e->timer);
+        last_time = al_get_time();
+        block_insert_row(m, g->x, g->y, points);
+        block_move(m);
+    }
 
-    al_start_timer(e->timer);
-    last_time = al_get_time();
-    while(1)
+    while(!erro)
     {
         current_time = al_get_time();
         delta_time = (current_time - last_time) * t_mult;
@@ -54,15 +64,9 @@ int main()
         if (al_key_down(&e->kbdstate, ALLEGRO_KEY_F4))
         {
             if (t_mult == 1)
-                t_mult = 2;
+                t_mult = 3;
             else
                 t_mult = 1;
-        //     b->ini->x = SCR_W / 2;
-        //     b->ini->y = SCR_H - b->raio - 30;
-        //     b->ini->sx = 0;
-        //     b->ini->sy = 0;
-
-        //     al_start_timer(timer);
         }
 
         if (b->launch == false)
@@ -84,39 +88,39 @@ int main()
             {
                 if (delta_y < -20)
                 {
-                    for (b->l_ctr=0; b->l_ctr < b->tam; b->l_ctr++)
-                    {
-                        set_ball_speed(ball, delta_x, delta_y, b->vel);
-                        ball = ball->next;
-                    }
-                    ball = b->ini;
-                    b->launch = true;
+                    ball_launch(b, delta_x, delta_y, b->vel);
                     l_timer = al_get_time();
                 }
                 mspress = false;
             }
         }
-        for (int i=0; i < b->tam && ball != NULL; i++){
+        for (int i=0; i < b->tam && ball != NULL; i++)
+        {
             if (ball->sx == 0 && ball->sy == 0)
             {
-                ball->x = b->ini->x;
-                ball->y = b->ini->y;
+                ball->cx = b->ini->cx;
+                ball->cy = b->ini->cy;
                 if (ball->move == true)
                     b->l_ctr -= 1;
                 ball->move = false;
             }
             else
             {
-                if (current_time - l_timer > (i * 0.05) || ball->move == true)
+                if (l_timer + i * 0.1 <= current_time || ball->move == true)
                 {
-                    ball->x += ball->sx * delta_time;
-                    ball->y += ball->sy * delta_time;
+                    ball->cx += (int)(ball->sx) / 1000 * (delta_time);
+                    ball->cy += (int)(ball->sy) / 1000 * (delta_time);
                     ball->move = true;
                     
-                    collide_left(ball, 0);
-                    collide_right(ball, SCR_W - b->raio * 2);
-                    collide_top(ball, g->y);
-                    collide_bottom(ball, g->h - b->raio * 2 - 0.5);
+                    ball_collide_left(ball, b->raio, 0);
+                    ball_collide_right(ball, b->raio, SCR_W - b->raio * 2);
+                    ball_collide_top(ball, b->raio, g->y);
+                    if (ball_collide_bottom(ball, b->raio, g->h - b->raio * 2 - 0.5))
+                    {
+                        ball->sx = 0;
+                        ball->sy = 0;
+                    }
+                    ball_collide_block(ball, m, b->raio, &nb, &coins);
                 }
             }
             ball = ball->next;
@@ -127,14 +131,24 @@ int main()
             b->launch = false;
             points++;
             t_mult = 1;
+            ball_insert(b, nb);
+            block_insert_row(m, g->x, g->y, points);
+            if (!block_move(m))
+            {
+                printf("Game Over\n");
+                break;
+            }
+            nb = 0;
         }
 
-        draw_game(e, b, g, delta_x, delta_y, points);
+        draw_game(e, b, g, m, delta_x, delta_y, points, coins);
         last_time = current_time;
     }
 
-    e = end_engine(e);
-    b = destroy_ball_list(b);
+    end_engine(&e);
+    game_destroy(&g);
+    // block_destroy(&m);
+    ball_list_destroy(&b);
 
     return 0;
 }

@@ -32,8 +32,8 @@ void *load_fonts();
 
 void destroy_fonts(void **f);
 
-void draw_game(engine_t *e, void *b, void *g, float dx, float dy, int pt);
+void draw_game(engine_t *e, void *ptr_b, void *ptr_g, void *ptr_m, float dx, float dy, int pt, int coins);
 
-engine_t *end_engine(engine_t* e);
+void end_engine(engine_t **e);
 
 #endif

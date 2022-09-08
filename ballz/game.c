@@ -1,7 +1,7 @@
 #include "game.h"
 #include <stdlib.h>
 
-gb_t *cria_gamebox(float scr_w, float scr_h)
+gb_t *game_make_box_p(float scr_w, float scr_h)
 {
     gb_t *g;
     
@@ -15,4 +15,10 @@ gb_t *cria_gamebox(float scr_w, float scr_h)
     g->h = scr_h - g->y;
 
     return g;
+}
+
+void game_destroy(gb_t **g)
+{
+    free(*g);
+    *g = NULL;
 }
