@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#define PROB_BLOCK 65
+#include <math.h>
+#define PROB_BLOCK 75
 #define PROB_BALL 100
 #define PROB_COIN 10
 
@@ -62,7 +63,7 @@ nodo_bk *block_make(float x, float y, float size, int space, int points, row_con
         bonus_b += 5;
     
     if (points > 1 && !r[0].have_coin && prob <= PROB_COIN)
-        return block_type_coin(x, y, size, space + size*0.3, &r[0].have_coin);
+        return block_type_coin(x, y, size, space + size*0.2, &r[0].have_coin);
     
     if (r[0].n_blocks < COLS_B-2 && prob <= PROB_BLOCK + bonus_b)
         return block_type_block(x, y, size, space, points, &r[0].n_blocks);
@@ -77,8 +78,8 @@ nodo_bk *block_type_block(float x, float y, float size, int space, int points, i
     bl = malloc(sizeof(nodo_bk));
     bl->x = x + space;
     bl->y = y + space;
-    bl->w = x + size - space;
-    bl->h = y + size - space;
+    bl->x2 = x + size - space;
+    bl->y2 = y + size - space;
     bl->cx = x + size/2;
     bl->cy = y + size/2;
     bl->t = BLOCK;
@@ -98,8 +99,8 @@ nodo_bk *block_type_coin(float x, float y, float size, int space, bool *h_coin)
     bl = malloc(sizeof(nodo_bk));
     bl->x = x + space;
     bl->y = y + space;
-    bl->w = x + size - space;
-    bl->h = y + size - space;
+    bl->x2 = x + size - space;
+    bl->y2 = y + size - space;
     bl->cx = x + size/2;
     bl->cy = y + size/2;
     bl->t = COIN;
@@ -117,8 +118,8 @@ nodo_bk *block_type_ball(float x, float y, float size, int space, bool *h_ball)
     bl = malloc(sizeof(nodo_bk));
     bl->x = x + space;
     bl->y = y + space;
-    bl->w = x + size - space;
-    bl->h = y + size - space;
+    bl->x2 = x + size - space;
+    bl->y2 = y + size - space;
     bl->cx = x + size/2;
     bl->cy = y + size/2;
     bl->t = BALL;
@@ -162,7 +163,7 @@ int block_move(matrix_bl *m)
             if (m->bl[i-1][j] != NULL)
             {
                 m->bl[i-1][j]->y += m->size;
-                m->bl[i-1][j]->h += m->size;
+                m->bl[i-1][j]->y2 += m->size;
                 m->bl[i-1][j]->cy += m->size;
             }
             m->bl[i][j] = m->bl[i-1][j];
@@ -220,48 +221,62 @@ type_b block_resolve_collide(nodo_bk **bl, int *new_balls, int *coins, row_contr
     return type;
 }
 
+bool block_collision(nodo_bk *bl, nodo_b *b, float raio, int type)
+{
+    vec_t nearest_point, ball_block_dist, norm_dist, ball_vel;
+    float overlap;
+
+    ball_vel = vector_make(b->sx, b->sy);
+    nearest_point = vector_make(fmaxf(bl->x, fminf(b->cx, bl->x2)), fmaxf(bl->y, fminf(b->cy, bl->y2)));
+    ball_block_dist = vector_dif(nearest_point, vector_make(b->cx, b->cy));
+    norm_dist = vector_norm(ball_block_dist);
+
+    overlap = fmaxf(raio, vector_len(ball_vel)) - vector_len(ball_block_dist);
+
+    if (overlap > 0)
+    {
+        if (bl->t == BLOCK)
+        {
+            b->cx += -norm_dist.x * overlap;
+            b->cy += -norm_dist.y * overlap;
+            
+            if (type == 1)
+                b->sx = -b->sx;
+            
+            if (type == 2)
+                b->sy = -b->sy;
+            
+            if (type == 3)
+            {
+                b->sx = -b->sx;
+                b->sy = -b->sy;
+            }
+        }
+        return true;
+    }
+
+    return false;
+}
+
 int block_collide_bottom(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins)
 {
     nodo_bk *bl;
-    float dif, y;
     int c, r, ret;
 
     ret = 0;
-    dif = raio + m->space;
 
-    if ((bl = block_get_by_quadrant(m, b->cx + raio, b->cy - m->size/2, &r, &c)))
+    if ((bl = block_get_by_quadrant(m, b->cx, b->cy - m->size/2, &r, &c)))
     {
-        if (b->cx + raio >= bl->x && b->cx + raio <= bl->w && b->cy - dif <= bl->h)
+        if (block_collision(bl, b, raio, 2))
         {
-            y = bl->h + dif;
             if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
             {
-                b->cy = y;
-                b->sy = -b->sy;
                 ret += 2;
             }
             else
                 ret += 1;
         }
     }
-
-    if ((bl = block_get_by_quadrant(m, b->cx - raio, b->cy - m->size/2, &r, &c)))
-    {
-        if (b->cx - raio >= bl->x && b->cx - raio <= bl->w && b->cy - dif <= bl->h)
-        {
-            y = bl->h + dif;
-            if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
-            {
-                b->cy = y;
-                b->sy = -b->sy;
-                ret += 2;
-            }
-            else
-                ret += 1;
-        }
-    }
-    if (ret == 4)
-        b->sy = -b->sy;
 
     return ret;
 }
@@ -269,44 +284,22 @@ int block_collide_bottom(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coin
 int block_collide_left(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins)
 {
     nodo_bk *bl;
-    float dif, x;
     int c, r, ret;
 
     ret = 0;
-    dif = raio + m->space;
 
-    if ((bl = block_get_by_quadrant(m, b->cx + m->size/2, b->cy + raio, &r, &c)))
+    if ((bl = block_get_by_quadrant(m, b->cx + m->size/2, b->cy, &r, &c)))
     {
-        if (b->cy + raio >= bl->y && b->cy + raio <= bl->h && b->cx + dif >= bl->x)
+        if (block_collision(bl, b, raio, 1))
         {
-            x = bl->x - dif;
             if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
             {
-                b->cx = x;
-                b->sx = -b->sx;
                 ret += 2;
             }
             else
                 ret += 1;
         }
-    } 
-    if ((bl = block_get_by_quadrant(m, b->cx + m->size/2, b->cy - raio, &r, &c)))
-    {
-        if (b->cy - raio >= bl->y && b->cy - raio <= bl->h && b->cx + dif >= bl->x)
-        {
-            x = bl->x - dif;
-            if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
-            {
-                b->cx = x;
-                b->sx = -b->sx;
-                ret += 2;
-            }
-            else
-                ret += 1;
-        }
-    } 
-    if (ret == 4)
-        b->sx = -b->sx;
+    }
 
     return ret;
 }
@@ -314,45 +307,22 @@ int block_collide_left(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins)
 int block_collide_top(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins)
 {
     nodo_bk *bl;
-    float dif, y;
     int c, r, ret;
     
     ret = 0;
-    dif = (raio + m->space);
 
-    if ((bl = block_get_by_quadrant(m, b->cx + raio, b->cy + m->size/2, &r, &c)))
+    if ((bl = block_get_by_quadrant(m, b->cx, b->cy + m->size/2, &r, &c)))
     {
-        if (b->cx + raio >= bl->x && b->cx + raio <= bl->w && b->cy + dif >= bl->y)
+        if (block_collision(bl, b, raio, 2))
         {
-            y = bl->y - dif;
             if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
             {
-                b->cy = y;
-                b->sy = -b->sy;
                 ret += 2;
             }
             else
                 ret += 1;
         }
     } 
-
-    if ((bl = block_get_by_quadrant(m, b->cx - raio, b->cy + m->size/2, &r, &c)))
-    {
-        if (b->cx - raio >= bl->x && b->cx - raio <= bl->w && b->cy + dif >= bl->y)
-        {
-            y = bl->y - dif;
-            if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
-            {
-                b->cy = y;
-                b->sy = -b->sy;
-                ret += 2;
-            }
-            else
-                ret += 1;
-        }
-    } 
-    if (ret == 4)
-        b->sy = -b->sy;
 
     return ret;
 }
@@ -360,45 +330,22 @@ int block_collide_top(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins)
 int block_collide_right(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins)
 {
     nodo_bk *bl;
-    float dif, x;
     int c, r, ret;
 
     ret = 0;
-    dif = raio + m->space;
 
-    if ((bl = block_get_by_quadrant(m, b->cx - m->size/2, b->cy + raio, &r, &c)))
+    if ((bl = block_get_by_quadrant(m, b->cx - m->size/2, b->cy, &r, &c)))
     {
-        if (b->cy - raio >= bl->y && b->cy + raio <= bl->h && b->cx - dif <= bl->w)
+        if (block_collision(bl, b, raio, 1))
         {
-            x = bl->w + dif;
             if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
             {
-                b->cx = x;
-                b->sx = -b->sx;
                 ret += 2;
             }
             else
                 ret += 1;
         }
     } 
-
-    if ((bl = block_get_by_quadrant(m, b->cx - m->size/2, b->cy - raio, &r, &c)))
-    {
-        if (b->cy - raio >= bl->y && b->cy + raio <= bl->h && b->cx - dif <= bl->w)
-        {
-            x = bl->w + dif + 0.1;
-            if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
-            {
-                b->cx = x;
-                b->sx = -b->sx;
-                ret += 2;
-            }
-            else
-                ret += 1;
-        }
-    } 
-    if (ret == 4)
-        b->sx = -b->sx;
 
     return ret;
 }
@@ -457,7 +404,7 @@ ALLEGRO_COLOR block_color(int value, int hits)
     return al_map_rgb(r, g, b);
 }
 
-void block_draw(engine_t *e, matrix_bl *m)
+void block_draw(engine_t *e, matrix_bl *m, int anim)
 {
     ALLEGRO_COLOR BG_COLOR;
     ALLEGRO_COLOR BL_COLOR;
@@ -475,23 +422,23 @@ void block_draw(engine_t *e, matrix_bl *m)
                 {
                 case BLOCK:
                     BL_COLOR = block_color(b->value, b->hit);
-                    al_draw_filled_rectangle(b->x, b->y, b->w, b->h, BL_COLOR);
+                    al_draw_filled_rounded_rectangle(b->x, b->y - anim, b->x2, b->y2 - anim, 2, 2, BL_COLOR);
                     
                     aux = al_get_font_line_height(e->fonts->f22)/2;
-                    al_draw_textf(e->fonts->f22, BG_COLOR,  b->cx,  b->cy - aux, -1, "%d",  b->value - b->hit);
+                    al_draw_textf(e->fonts->f22, BG_COLOR,  b->cx,  b->cy - aux - anim, -1, "%d",  b->value - b->hit);
                     break;
                 case COIN:
                     BL_COLOR = al_map_rgb(240,240,70);
-                    aux = (b->w - b->x)/2;
-                    al_draw_filled_circle(b->x + aux, b->y + aux, aux, BL_COLOR);
-                    al_draw_filled_circle(b->x + aux, b->y + aux, aux * 0.7, BG_COLOR);
+                    aux = (b->x2 - b->x)/2;
+                    al_draw_filled_circle(b->x + aux, b->y + aux - anim, aux * 0.8, BL_COLOR);
+                    al_draw_filled_circle(b->x + aux, b->y + aux - anim, aux * 0.6, BG_COLOR);
                     break;
                 case BALL:
                     BL_COLOR = al_map_rgb(255,255,255);
-                    aux = (b->w - b->x)/2;
-                    al_draw_filled_circle(b->x + aux, b->y + aux, aux, BL_COLOR);
-                    al_draw_filled_circle(b->x + aux, b->y + aux, aux * 0.85, BG_COLOR);
-                    al_draw_filled_circle(b->x + aux, b->y + aux, aux * 0.4, BL_COLOR);
+                    aux = (b->x2 - b->x)/2;
+                    al_draw_filled_circle(b->x + aux, b->y + aux - anim, aux, BL_COLOR);
+                    al_draw_filled_circle(b->x + aux, b->y + aux - anim, aux * 0.85, BG_COLOR);
+                    al_draw_filled_circle(b->x + aux, b->y + aux - anim, aux * 0.4, BL_COLOR);
                     break;
                 }
             }

@@ -4,13 +4,13 @@
 
 void state_menu(engine_t *e, states *st)
 {
-    vet_t ms, v;
-    vet_t play_button;
+    vec_t ms, v;
+    vec_t play_button;
     float aux, x;
     int button_size = 50;
     bool done = false, st_swt = false;
     
-    play_button = vet_make(SCR_W/2, SCR_H * 0.7);
+    play_button = vector_make(SCR_W/2, SCR_H * 0.7);
 
     al_start_timer(e->timer);
 
@@ -23,9 +23,9 @@ void state_menu(engine_t *e, states *st)
         al_get_keyboard_state(&e->kbdstate);
         al_wait_for_event(e->queue, &e->event);
 
-        ms = vet_make(e->msestate.x, e->msestate.y);
-        v = vet_dif(play_button, ms);
-        x = vet_len(v);
+        ms = vector_make(e->msestate.x, e->msestate.y);
+        v = vector_dif(play_button, ms);
+        x = vector_len(v);
 
         switch (e->event.type)
         {
@@ -69,17 +69,16 @@ void state_menu(engine_t *e, states *st)
 void state_game(engine_t *e, states *st)
 {
     game_t *gs;
-    vet_t start, delta;
-    g_states gst;
+    vec_t start, delta;
     bool mspress = false, play = true;
     int nb = 0;
     float lt = 0;
 
-    if (!game_start(e, &gs, &start, &delta, &gst))
+    if (!game_start(e, &gs, &start, &delta))
         return;
 
     while(play)
-        switch (game_update(e, gs, &mspress, &start, &delta, &nb, &lt, &gst))
+        switch (game_update(e, gs, &mspress, &start, &delta, &nb, &lt))
         {
         case 0:
             *st = MENU;
@@ -88,7 +87,7 @@ void state_game(engine_t *e, states *st)
         
         case 2:
             game_destroy(&gs);
-            if (!game_start(e, &gs, &start, &delta, &gst))
+            if (!game_start(e, &gs, &start, &delta))
                 return;
             break;
         }

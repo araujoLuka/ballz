@@ -14,7 +14,7 @@ typedef struct block_matrix matrix_bl;
 
 struct block
 {
-    float x, y, w, h, cx, cy;
+    float x, y, x2, y2, cx, cy;
     type_b t;
     int value, hit;
 };
@@ -63,7 +63,7 @@ int block_collide_right(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins
 
 nodo_bk *block_get_by_quadrant(matrix_bl *m, float x, float y, int *i, int *j);
 
-void block_draw(engine_t *e, matrix_bl *m);
+void block_draw(engine_t *e, matrix_bl *m, int anim);
 
 void block_destroy(nodo_bk **bl);
 

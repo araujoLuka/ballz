@@ -3,6 +3,9 @@
         "game.h": "c",
         "states.h": "c",
         "engine.h": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "block.h": "c",
+        "object.h": "c",
+        "ball.h": "c"
     }
 }

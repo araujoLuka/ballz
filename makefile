@@ -7,6 +7,9 @@ OBJECTS=$(patsubst sources/%.c, bin/%.o, $(SOURCES))
 
 all: $(PROGRAM)
 
+play: all
+	./$(PROGRAM)
+
 $(PROGRAM): main.o $(OBJECTS)
 	gcc $(CFLAGS) bin/main.o $(OBJECTS) -o $(PROGRAM) $(LIBS)
 

@@ -16,19 +16,6 @@ typedef struct AL_ATRIBUTES engine_t;
 #include "block.h"
 #include "object.h"
 
-
-struct AL_ATRIBUTES
-{
-    ALLEGRO_DISPLAY *disp;
-    ALLEGRO_EVENT event;
-    ALLEGRO_EVENT_QUEUE *queue;
-    ALLEGRO_BITMAP *cursor;
-    ALLEGRO_TIMER *timer;
-    struct GAME_FONTS *fonts;
-    ALLEGRO_MOUSE_STATE msestate;
-    ALLEGRO_KEYBOARD_STATE kbdstate;
-};
-
 typedef struct GAME_FONTS
 {
     ALLEGRO_FONT *f18;
@@ -38,6 +25,18 @@ typedef struct GAME_FONTS
     ALLEGRO_FONT *f40;
     ALLEGRO_FONT *f60;
 } ALLEGRO_FONT_STRUCT;
+
+struct AL_ATRIBUTES
+{
+    ALLEGRO_DISPLAY *disp;
+    ALLEGRO_EVENT event;
+    ALLEGRO_EVENT_QUEUE *queue;
+    ALLEGRO_BITMAP *cursor;
+    ALLEGRO_TIMER *timer;
+    ALLEGRO_FONT_STRUCT *fonts;
+    ALLEGRO_MOUSE_STATE msestate;
+    ALLEGRO_KEYBOARD_STATE kbdstate;
+};
 
 engine_t *start_engine();
 

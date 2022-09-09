@@ -14,8 +14,8 @@ ball_t *ball_list_make(float disp_w, float disp_h)
         return NULL;
     }
 
-    b->img = load_bitmap_at_size("./resources/bola.png", 16, 16);
-    b->vel = 800;
+    b->img = load_bitmap_at_size("./resources/bola.png", 14, 14);
+    b->vel = 15;
     b->raio = al_get_bitmap_width(b->img) / 2;
 
     b->ini = ball_make(disp_w / 2, disp_h - b->raio);
@@ -70,21 +70,19 @@ int ball_insert(ball_t *b, int q)
     return 1;
 }
 
-void ball_launch(ball_t *b, vet_t *d, float vel)
+void ball_launch(ball_t *b, vec_t *d, float vel)
 {
     nodo_b *aux = b->ini;
-    vet_t v;
-    float tam;
+    vec_t delta_norm;
 
-    tam = sqrt((d->x * d->x) + (d->y * d->y));
-
-    v.x = (d->x / tam);
-    v.y = (d->y / tam);
+    d->x *= 1000;
+    d->y *= 1000;
+    delta_norm = vector_norm(*d);
 
     for (b->l_ctr=0; b->l_ctr < b->tam; b->l_ctr++)
     {
-        aux->sx = v.x * vel;
-        aux->sy = v.y * vel;
+        aux->sx = delta_norm.x * vel;
+        aux->sy = delta_norm.y * vel;
         aux = aux->next;
     }
     b->launch = true;
@@ -98,7 +96,6 @@ void ball_draw(ball_t *b)
     for (int i=0; i < b->tam; i++)
     {
         al_draw_bitmap(b->img, aux->cx - b->raio, aux->cy - b->raio, 0);
-        al_draw_filled_circle(aux->cx, aux->cy, 2, al_map_rgb(255,0,0));
         aux = aux->next;
     }
 }
@@ -150,11 +147,11 @@ int ball_collide_bottom(nodo_b *b, float r, int lim)
 
 bool ball_block_intersection(nodo_b ball, float raio, box_t block)
 {
-    vet_t bDist;
+    vec_t bDist;
     float cnrDist;
 
-    bDist.x = abs(ball.cx - block.x);
-    bDist.y = abs(ball.cy - block.y);
+    bDist.x = abs(ball.cx - block.x1);
+    bDist.y = abs(ball.cy - block.y1);
 
     if (bDist.x > (block.w/2 + raio) || (bDist.y > (block.h/2 + raio)))
         return false;

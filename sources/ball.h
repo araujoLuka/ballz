@@ -34,7 +34,7 @@ nodo_b *ball_make(double x, double y);
 
 int ball_insert(ball_t *b, int q);
 
-void ball_launch(ball_t *b, vet_t *d, float scale);
+void ball_launch(ball_t *b, vec_t *d, float scale);
 
 void ball_draw(ball_t *b);
 
