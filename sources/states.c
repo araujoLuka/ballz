@@ -214,8 +214,9 @@ void state_help(engine_t *e, states *st)
 
         if (done || al_key_down(&e->kbdstate, ALLEGRO_KEY_ESCAPE))
         {
-            al_rest(0.1);
-            *st = MENU;
+            al_rest(0.2);
+            if (st != NULL)
+                *st = MENU;
             break;
         }
 
@@ -223,20 +224,24 @@ void state_help(engine_t *e, states *st)
         {
             if (circle_inside(ms, back_button))
             {
-                *st = MENU;
+                al_rest(0.1);
+                if (st != NULL)
+                    *st = MENU;
                 break;
             }
         } 
 
         al_clear_to_color(al_map_rgb(20, 20, 20));
 
-        float img_width = al_get_bitmap_width(help);
-        float img_height = al_get_bitmap_height(help);
-        al_draw_bitmap(help, SCR_W*0.5 - img_width/2, SCR_H*0.55 - img_height/2, 0);
-
         draw_icon("resources/models/back.png", al_map_rgb(60, 60, 60), back_button, ms);
 
-        draw_text(e->fonts->r30, al_map_rgb(255, 255, 255), SCR_W/2, SCR_H*0.1, -1, "HOW TO PLAY");
+        draw_text(e->fonts->r30, al_map_rgb(255, 255, 255), SCR_W/2, SCR_H*0.05, -1, "HOW TO PLAY");
+
+        float img_width = al_get_bitmap_width(help);
+        float img_height = al_get_bitmap_height(help);
+        al_draw_bitmap(help, SCR_W*0.5 - img_width/2, SCR_H*0.5 - img_height/2, 0);
+
+        draw_text(e->fonts->r18, al_map_rgb(255, 255, 255), SCR_W/2, SCR_H*0.97, 1, "Created by Lucas Araujo");
 
         al_draw_bitmap(e->cursor, e->msestate.x, e->msestate.y, 0);
         e->curr_t = al_get_time();

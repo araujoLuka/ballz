@@ -1,4 +1,5 @@
 #include "game.h"
+#include "states.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -125,6 +126,13 @@ g_states game_events(engine_t *e, g_states gst, g_states lst, float *scale)
     {
         al_rest(0.2);
         return STOP;
+    }
+
+    if (al_key_down(&e->kbdstate, ALLEGRO_KEY_F1))
+    {
+        al_rest(0.2);
+        state_help(e, NULL);
+        return gst;
     }
 
     if (al_key_down(&e->kbdstate, ALLEGRO_KEY_N))
