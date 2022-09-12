@@ -14,7 +14,7 @@ u_data *data_fetch()
     u_data *d;
     char buff[BUFFSIZE+1];
 
-    if (!(dir = opendir("./")))
+    if (!(dir = opendir("data/")))
     {
         fprintf(stderr, "Falha ao buscar dados de save\n");
         return NULL;
@@ -26,7 +26,7 @@ u_data *data_fetch()
             return NULL;
         if (strstr(f->d_name, ".sve"))
         {
-            strcpy(buff, "./");
+            strcpy(buff, "data/");
             strcat(buff, f->d_name);
             file = fopen(buff, "rb+");
             if (file == NULL)
@@ -47,7 +47,7 @@ u_data *data_create()
     FILE *file;
     u_data *d;
 
-    file = fopen(".udata.sve", "wb");
+    file = fopen("data/.udata.sve", "wb");
     if (!file)
         return NULL;
 
@@ -73,7 +73,7 @@ void data_record(u_data *d)
 {
     FILE *file;
 
-    file = fopen(".udata.sve", "wb");
+    file = fopen("data/.udata.sve", "wb");
     fwrite(d, sizeof(u_data), 1, file);
 }
 
