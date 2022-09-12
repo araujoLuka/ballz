@@ -37,6 +37,7 @@ matrix_bl *block_matrix_make(float g_w)
     block_rwc_make(m->rows);
     m->space = 4;
     m->size = g_w / (COLS_B);
+    m->coin_img = load_bitmap_at_size("resources/models/coin1.png", 25, 25);
 
     return m;
 }
@@ -183,7 +184,7 @@ int block_move(matrix_bl *m)
 }
 
 // Tratamento para colisao com o bloco, retorna o tipo do bloco
-type_b block_resolve_collide(nodo_bk **bl, int *new_balls, int *coins, row_control *r)
+type_b block_resolve_collide(nodo_bk **bl, int *new_balls, int *coins, row_control *r, ALLEGRO_SOUNDS *s)
 {
     type_b type = (*bl)->t; // copia do tipo em caso de free(*bl)
 
@@ -192,6 +193,9 @@ type_b block_resolve_collide(nodo_bk **bl, int *new_balls, int *coins, row_contr
     case BLOCK:
         // Registra o acerto
         (*bl)->hit++;
+
+        // Som de acerto do bloco
+        al_play_sample(s->hit_block, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
 
         // Destroi o bloco quando o total de hits atingir o valor
         if ((*bl)->hit >= (*bl)->value) 
@@ -205,6 +209,9 @@ type_b block_resolve_collide(nodo_bk **bl, int *new_balls, int *coins, row_contr
         // Coleta a moeda
         *coins += 1;
 
+        // Som da coleta da moeda
+        al_play_sample(s->coin, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+
         block_destroy(bl);
         r->have_coin = false;
         break;
@@ -213,17 +220,23 @@ type_b block_resolve_collide(nodo_bk **bl, int *new_balls, int *coins, row_contr
         // Coleta a bolinha extra
         *new_balls += 1;
 
+        // Som da coleta da bolinha extra
+        al_play_sample(s->ball_up, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+
         block_destroy(bl);
         r->have_ball = false;
+        break;
+
+    default:
         break;
     }
 
     return type;
 }
 
-bool block_collision(nodo_bk *bl, nodo_b *b, float raio, int type)
+bool block_collision(nodo_bk *bl, nodo_b *b, float radius)
 {
-    vec_t nearest_point, ball_block_dist, norm_dist, ball_vel;
+    vec_t nearest_point, ball_block_dist, norm_dist, ball_vel, aux;
     float overlap;
 
     ball_vel = vector_make(b->sx, b->sy);
@@ -231,7 +244,7 @@ bool block_collision(nodo_bk *bl, nodo_b *b, float raio, int type)
     ball_block_dist = vector_dif(nearest_point, vector_make(b->cx, b->cy));
     norm_dist = vector_norm(ball_block_dist);
 
-    overlap = fmaxf(raio, vector_len(ball_vel)) - vector_len(ball_block_dist);
+    overlap = fmaxf(radius, vector_len(ball_vel)) - vector_len(ball_block_dist);
 
     if (overlap > 0)
     {
@@ -240,17 +253,43 @@ bool block_collision(nodo_bk *bl, nodo_b *b, float raio, int type)
             b->cx += -norm_dist.x * overlap;
             b->cy += -norm_dist.y * overlap;
             
-            if (type == 1)
-                b->sx = -b->sx;
-            
-            if (type == 2)
+            if (b->cx - radius/2 > bl->x && b->cx + radius/2 < bl->x2)
                 b->sy = -b->sy;
-            
-            if (type == 3)
+            else if (b->cy - radius/2 > bl->y && b->cy + radius/2 < bl->y2)
+                b->sx = -b->sx;
+            else
             {
-                b->sx = -b->sx;
-                b->sy = -b->sy;
-            }
+                if (b->cx + radius/2 >= bl->x && b->cx + radius/2 < bl->x2)
+                    if (b->cy - radius/2 <= bl->y2 && b->cy - radius/2 > bl->y)
+                    {
+                        aux = vector_norm(vector_make(b->cx-radius-bl->x, b->cy+radius-bl->y2));
+                        b->sx = aux.x * 15;
+                        b->sy = aux.y * 15;
+                    }
+                    else
+                    {
+                        aux = vector_norm(vector_make(b->cx-radius-bl->x, b->cy-radius-bl->y2));
+                        b->sx = aux.x * 15;
+                        b->sy = aux.y * 15;
+                    }
+                else
+                    if (b->cy - radius/2 <= bl->y2 && b->cy - radius/2 > bl->y)
+                    {
+                        aux = vector_norm(vector_make(b->cx+radius-bl->x, b->cy+radius-bl->y2));
+                        b->sx = aux.x * 15;
+                        b->sy = aux.y * 15;
+                    }
+                    else
+                    {
+                        aux = vector_norm(vector_make(b->cx+radius-bl->x, b->cy-radius-bl->y2));
+                        b->sx = aux.x * 15;
+                        b->sy = aux.y * 15;
+                    }
+                if (b->sy > 0 && b->sy < 2)
+                    b->sy = 3;
+                else if (b->sy < 0 && b->sy > -2)
+                    b->sy = -3;
+            } 
         }
         return true;
     }
@@ -258,96 +297,60 @@ bool block_collision(nodo_bk *bl, nodo_b *b, float raio, int type)
     return false;
 }
 
-int block_collide_bottom(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins)
+type_b block_collide_bottom(matrix_bl *m, nodo_b *b, float radius, int *nb, int *coins, ALLEGRO_SOUNDS *s)
 {
     nodo_bk *bl;
-    int c, r, ret;
-
-    ret = 0;
+    int c, r;
 
     if ((bl = block_get_by_quadrant(m, b->cx, b->cy - m->size/2, &r, &c)))
     {
-        if (block_collision(bl, b, raio, 2))
-        {
-            if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
-            {
-                ret += 2;
-            }
-            else
-                ret += 1;
-        }
+        if (block_collision(bl, b, radius))
+            return block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r], s);
     }
 
-    return ret;
+    return NONE;
 }
 
-int block_collide_left(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins)
+type_b block_collide_left(matrix_bl *m, nodo_b *b, float radius, int *nb, int *coins, ALLEGRO_SOUNDS *s)
 {
     nodo_bk *bl;
-    int c, r, ret;
-
-    ret = 0;
+    int c, r;
 
     if ((bl = block_get_by_quadrant(m, b->cx + m->size/2, b->cy, &r, &c)))
     {
-        if (block_collision(bl, b, raio, 1))
-        {
-            if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
-            {
-                ret += 2;
-            }
-            else
-                ret += 1;
-        }
+        if (block_collision(bl, b, radius))
+            return block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r], s);
     }
 
-    return ret;
+    return NONE;
 }
 
-int block_collide_top(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins)
+type_b block_collide_top(matrix_bl *m, nodo_b *b, float radius, int *nb, int *coins, ALLEGRO_SOUNDS *s)
 {
     nodo_bk *bl;
-    int c, r, ret;
+    int c, r;
     
-    ret = 0;
-
     if ((bl = block_get_by_quadrant(m, b->cx, b->cy + m->size/2, &r, &c)))
     {
-        if (block_collision(bl, b, raio, 2))
-        {
-            if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
-            {
-                ret += 2;
-            }
-            else
-                ret += 1;
-        }
+        if (block_collision(bl, b, radius))
+            return block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r], s);
     } 
 
-    return ret;
+    return NONE;
 }
 
-int block_collide_right(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins)
+type_b block_collide_right(matrix_bl *m, nodo_b *b, float radius, int *nb, int *coins, ALLEGRO_SOUNDS *s)
 {
     nodo_bk *bl;
-    int c, r, ret;
-
-    ret = 0;
+    int c, r;
 
     if ((bl = block_get_by_quadrant(m, b->cx - m->size/2, b->cy, &r, &c)))
     {
-        if (block_collision(bl, b, raio, 1))
-        {
-            if (block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r]) == BLOCK)
-            {
-                ret += 2;
-            }
-            else
-                ret += 1;
-        }
+        if (block_collision(bl, b, radius))
+            return block_resolve_collide(&m->bl[r][c], nb, coins, &m->rows[r], s);
     } 
 
-    return ret;
+    return NONE;
 }
 
 nodo_bk *block_get_by_quadrant(matrix_bl *m, float x, float y, int *i, int *j)
@@ -412,7 +415,6 @@ void block_draw(engine_t *e, matrix_bl *m, int anim)
     float aux;
 
     BG_COLOR = al_map_rgb(20, 20, 20);
-
     for (int i=0; i < ROWS_B; i++)
         for(int j=0; j < COLS_B; j++)
         {
@@ -424,15 +426,14 @@ void block_draw(engine_t *e, matrix_bl *m, int anim)
                     BL_COLOR = block_color(b->value, b->hit);
                     al_draw_filled_rounded_rectangle(b->x, b->y - anim, b->x2, b->y2 - anim, 2, 2, BL_COLOR);
                     
-                    aux = al_get_font_line_height(e->fonts->f22)/2;
-                    al_draw_textf(e->fonts->f22, BG_COLOR,  b->cx,  b->cy - aux - anim, -1, "%d",  b->value - b->hit);
+                    draw_num(e->fonts->r22, BG_COLOR, b->cx, b->cy-anim, -1, b->value - b->hit);
                     break;
+
                 case COIN:
                     BL_COLOR = al_map_rgb(240,240,70);
-                    aux = (b->x2 - b->x)/2;
-                    al_draw_filled_circle(b->x + aux, b->y + aux - anim, aux * 0.8, BL_COLOR);
-                    al_draw_filled_circle(b->x + aux, b->y + aux - anim, aux * 0.6, BG_COLOR);
+                    al_draw_bitmap(m->coin_img, b->x, b->y - anim, 0);
                     break;
+
                 case BALL:
                     BL_COLOR = al_map_rgb(255,255,255);
                     aux = (b->x2 - b->x)/2;
@@ -440,6 +441,9 @@ void block_draw(engine_t *e, matrix_bl *m, int anim)
                     al_draw_filled_circle(b->x + aux, b->y + aux - anim, aux * 0.85, BG_COLOR);
                     al_draw_filled_circle(b->x + aux, b->y + aux - anim, aux * 0.4, BL_COLOR);
                     break;
+
+                default:
+                    break;  
                 }
             }
         }

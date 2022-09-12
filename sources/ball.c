@@ -4,9 +4,13 @@
 #include <math.h>
 #define START_ALLOC 10
 
-ball_t *ball_list_make(float disp_w, float disp_h)
+ball_t *ball_list_make(float disp_w, float disp_h, int sel)
 {
     ball_t *b;
+    int ball_size;
+    char ball_path[150], c[2];
+
+    ball_size = 14;
     
     if (!(b = malloc(sizeof(ball_t))))
     {
@@ -14,11 +18,16 @@ ball_t *ball_list_make(float disp_w, float disp_h)
         return NULL;
     }
 
-    b->img = load_bitmap_at_size("./resources/bola.png", 14, 14);
+    c[0] = (char)(sel + '0');
+    c[1] = '\0';
+    strcpy(ball_path, "./resources/models/ball_");
+    strcat(ball_path, c);
+    strcat(ball_path, ".png");
+    b->img = load_bitmap_at_size(ball_path, ball_size, ball_size);
     b->vel = 15;
-    b->raio = al_get_bitmap_width(b->img) / 2;
+    b->radius = ball_size / 2;
 
-    b->ini = ball_make(disp_w / 2, disp_h - b->raio);
+    b->ini = ball_make(disp_w / 2, disp_h - b->radius);
     b->first = b->ini;
 
     b->tam = 1;
@@ -75,8 +84,6 @@ void ball_launch(ball_t *b, vec_t *d, float vel)
     nodo_b *aux = b->ini;
     vec_t delta_norm;
 
-    d->x *= 1000;
-    d->y *= 1000;
     delta_norm = vector_norm(*d);
 
     for (b->l_ctr=0; b->l_ctr < b->tam; b->l_ctr++)
@@ -95,40 +102,43 @@ void ball_draw(ball_t *b)
     
     for (int i=0; i < b->tam; i++)
     {
-        al_draw_bitmap(b->img, aux->cx - b->raio, aux->cy - b->raio, 0);
+        al_draw_bitmap(b->img, aux->cx - b->radius, aux->cy - b->radius, 0);
         aux = aux->next;
     }
 }
 
 
-int ball_collide_left(nodo_b *b, float r, int lim)
+int ball_collide_left(nodo_b *b, float r, int lim, ALLEGRO_SAMPLE *sound)
 {
     if (b->cx - r < lim)
     {
         b->cx = lim + r;
         b->sx = -b->sx;
+        al_play_sample(sound, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
         return 1;
     }
     return 0;
 }
 
-int ball_collide_right(nodo_b *b, float r, int lim)
+int ball_collide_right(nodo_b *b, float r, int lim, ALLEGRO_SAMPLE *sound)
 {
     if (b->cx + r > lim)
     {
         b->cx = lim - r;
         b->sx = -b->sx;
+        al_play_sample(sound, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
         return 1;
     }
     return 0;
 }
 
-int ball_collide_top(nodo_b *b, float r, int lim)
+int ball_collide_top(nodo_b *b, float r, int lim, ALLEGRO_SAMPLE *sound)
 {
     if (b->cy - r < lim)
     {
         b->cy = lim + r;
         b->sy = -b->sy;
+        al_play_sample(sound, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
         return 1;
     }
     return 0;
@@ -145,43 +155,28 @@ int ball_collide_bottom(nodo_b *b, float r, int lim)
     return 0;
 }
 
-bool ball_block_intersection(nodo_b ball, float raio, box_t block)
+int ball_collide_block(nodo_b *b, matrix_bl *m, float radius, int *nb, int *coins, ALLEGRO_SOUNDS *s)
 {
-    vec_t bDist;
-    float cnrDist;
+    int hits, t;
+    hits = 0;
 
-    bDist.x = abs(ball.cx - block.x1);
-    bDist.y = abs(ball.cy - block.y1);
+    if (b->sy < 0)
+        t = block_collide_bottom(m, b, radius, nb, coins, s);
+    else
+        t = block_collide_top(m, b, radius, nb, coins, s);
+    
+    if (t == BLOCK)
+        hits += 1;
+    
+    if (b->sx < 0)
+        t = block_collide_right(m, b, radius, nb, coins, s);
+    else
+        t = block_collide_left(m, b, radius, nb, coins, s);
+    
+    if (t == BLOCK)
+        hits += 1;
 
-    if (bDist.x > (block.w/2 + raio) || (bDist.y > (block.h/2 + raio)))
-        return false;
-
-    if (bDist.x <= (block.w/2) || (bDist.y <= (block.h/2)))
-        return true;
-
-    cnrDist = (bDist.x - block.w/2) * (bDist.x - block.w/2) + (bDist.y - block.h/2) * (bDist.y - block.h/2);
-
-    if (cnrDist <= (raio * raio))
-        return true;
-
-    return false;
-}
-
-int ball_collide_block(nodo_b *b, matrix_bl *m, float raio, int *nb, int *coins)
-{
-    if (b->sy < 0 && block_collide_bottom(m, b, raio, nb, coins))
-        return 1;
-
-    if (b->sx > 0 && block_collide_left(m, b, raio, nb, coins))
-        return 1;
-
-    if (b->sy > 0 && block_collide_top(m, b, raio, nb, coins))
-        return 1;
-
-    if (b->sx < 0 && block_collide_right(m, b, raio, nb, coins))
-        return 1;
-
-    return 0;
+    return hits;
 }
 
 void ball_list_destroy(ball_t **b)

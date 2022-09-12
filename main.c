@@ -7,20 +7,27 @@
 int main()
 {
     engine_t *e;
-    states st = MENU;
+    u_data *d;
+    states st = START;
 
     srand(time(NULL));
 
     e = start_engine();
+    al_play_sample(e->sounds->bgrd, 0.3, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
     
     while(st != END)
     {
         switch (st)
         {
-        case START: /*state_start()*/; break;
-        case MENU: state_menu(e, &st); break;
-        case GAME: state_game(e, &st); break;
-        default: break;
+            case START: state_start(e, &d, &st); break;
+            
+            case MENU: state_menu(e, d, &st); break;
+
+            case HELP: state_help(e, &st); break;
+
+            case GAME: state_game(e, d, &st); break;
+            
+            default: break;
         }
     }
 

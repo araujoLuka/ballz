@@ -6,6 +6,10 @@
         "type_traits": "c",
         "block.h": "c",
         "object.h": "c",
-        "ball.h": "c"
+        "ball.h": "c",
+        "allegro_audio.h": "c",
+        "stdlib.h": "c",
+        "stdio.h": "c",
+        "string.h": "c"
     }
 }

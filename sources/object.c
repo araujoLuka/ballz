@@ -21,12 +21,20 @@ vec_t *vector_destroy(vec_t *vetor)
 
 float vector_len(vec_t v)
 {
-    float square_sum;
+    double square_sum;
     square_sum = v.x*v.x + v.y*v.y;
     if (square_sum < 0)
-        square_sum = -square_sum;
+        return -sqrt(-square_sum);
 
     return sqrt(square_sum);
+}
+
+float vector_lenSq(vec_t v)
+{
+    float square_sum;
+    square_sum = v.x*v.x + v.y*v.y;
+
+    return square_sum;
 }
 
 vec_t vector_norm(vec_t v)
@@ -67,20 +75,42 @@ box_t box_make(float px, float py, float width, float height)
     return b;
 }
 
-int box_inside (vec_t vetor, box_t obj)
+circ_t circle_make(float x, float y, float radius)
+{
+    circ_t c;
+
+    c.x = x;
+    c.y = y;
+    c.radius = radius;
+
+    return c;
+}
+
+int box_inside (vec_t point, box_t obj)
 {
     int hz, vt;
     hz = 0;
     vt = 0;
 
-    if (vetor.x >= obj.x1 && vetor.x <= obj.x2)
+    if (point.x >= obj.x1 && point.x <= obj.x2)
         hz = 1;
     
-    if (vetor.y >= obj.y1 && vetor.y <= obj.y2)
+    if (point.y >= obj.y1 && point.y <= obj.y2)
         vt = 1;
 
     if (hz && vt)
         return 1;
 
+    return 0;
+}
+
+int circle_inside (vec_t point, circ_t obj)
+{
+    vec_t dist;
+    dist = vector_dif(vector_make(obj.x, obj.y), point);
+
+    if (vector_len(dist) < obj.radius)
+        return 1;
+    
     return 0;
 }

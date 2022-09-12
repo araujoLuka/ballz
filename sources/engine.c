@@ -37,14 +37,20 @@ engine_t *start_engine()
     }
 
     al_hide_mouse_cursor(e->disp);
-    if (!(e->cursor = load_bitmap_at_size("resources/cursor.png", 30, 30)))
+    if (!(e->cursor = load_bitmap_at_size("resources/cursor/cursor.png", 30, 30)))
     {
         free(e);
         fprintf(stderr, "Falha ao criar cursor.\n");
         return NULL;
     }
 
+    al_reserve_samples(16);
+    
     e->fonts = load_fonts();
+    e->sounds = load_sounds();
+    e->curr_t = 0;
+    e->last_t = 0;
+    e->delta_t = 0;
 
     al_register_event_source(e->queue, al_get_keyboard_event_source());
     al_register_event_source(e->queue, al_get_display_event_source(e->disp));
@@ -96,46 +102,19 @@ int start_allegro()
         return 0;
     }
 
+    if (!al_install_audio())
+    {
+        fprintf(stderr, "Falha ao iniciar controle de audio\n");
+        return 0;
+    }
+
+    if (!al_init_acodec_addon())
+    {
+        fprintf(stderr, "Falha ao iniciar audio codec addon\n");
+        return 0;
+    }
+
     return 1;
-}
-
-void *load_fonts()
-{
-    ALLEGRO_FONT_STRUCT *f;
-
-    if (!(f = malloc(sizeof(ALLEGRO_FONT_STRUCT))))
-    {
-        fprintf(stderr, "Falha ao alocar memoria para fontes\n");
-        return NULL;
-    }
-
-    f->f18 = al_load_font("resources/font.otf", 18, 0);
-    f->f22 = al_load_font("resources/font.otf", 22, 0);
-    f->f26 = al_load_font("resources/font.otf", 26, 0);
-    f->f30 = al_load_font("resources/font.otf", 30, 0);
-    f->f40 = al_load_font("resources/font.otf", 40, 0);
-    f->f60 = al_load_font("resources/font.otf", 60, 0);
-
-    if (!f->f18 || !f->f22 || !f->f26 || !f->f30 || !f->f40 || !f->f60)
-    {
-        destroy_fonts(&f);
-        fprintf(stderr, "Falha ao carregar fontes\n");
-        return NULL;
-    }
-
-    return f;
-}
-
-void destroy_fonts(ALLEGRO_FONT_STRUCT **f)
-{
-    al_destroy_font((*f)->f18);
-    al_destroy_font((*f)->f22);
-    al_destroy_font((*f)->f26);
-    al_destroy_font((*f)->f30);
-    al_destroy_font((*f)->f40);
-    al_destroy_font((*f)->f60);
-    free(*f);
-    *f = NULL;
 }
 
 ALLEGRO_BITMAP *load_bitmap_at_size(const char *filename, int w, int h)
@@ -173,6 +152,138 @@ ALLEGRO_BITMAP *load_bitmap_at_size(const char *filename, int w, int h)
   al_destroy_bitmap(loaded_bmp);
 
   return resized_bmp;      
+}
+
+ALLEGRO_FONTS *load_fonts()
+{
+    ALLEGRO_FONTS *f;
+
+    if (!(f = malloc(sizeof(ALLEGRO_FONTS))))
+    {
+        fprintf(stderr, "Falha ao alocar memoria para fontes\n");
+        return NULL;
+    }
+
+    f->l10 = al_load_font("resources/fonts/light.otf", 10, 0);
+    f->r18 = al_load_font("resources/fonts/regular.otf", 18, 0);
+    f->r22 = al_load_font("resources/fonts/regular.otf", 22, 0);
+    f->r26 = al_load_font("resources/fonts/regular.otf", 26, 0);
+    f->r30 = al_load_font("resources/fonts/regular.otf", 30, 0);
+    f->r40 = al_load_font("resources/fonts/regular.otf", 40, 0);
+    f->b22 = al_load_font("resources/fonts/bold.otf", 22, 0);
+    f->l60 = al_load_font("resources/fonts/light.otf", 60, 0);
+
+    if (!f->l10 || !f->r18 || !f->r22 || !f->r26 || !f->r30 || !f->b22 || !f->r40 || !f->l60)
+    {
+        destroy_fonts(&f);
+        fprintf(stderr, "Falha ao carregar fontes\n");
+        return NULL;
+    }
+
+    return f;
+}
+
+ALLEGRO_SOUNDS *load_sounds()
+{
+    ALLEGRO_SOUNDS *s;
+
+    if (!(s = malloc(sizeof(ALLEGRO_SOUNDS))))
+    {
+        fprintf(stderr, "Falha ao alocar memoria para audios\n");
+        return NULL;
+    }
+
+    s->bgrd = al_load_sample("resources/sounds/background.wav");
+    s->coin = al_load_sample("resources/sounds/coin.wav");
+    s->ball_up = al_load_sample("resources/sounds/ballup.wav");
+    s->hit_wall = al_load_sample("resources/sounds/hit1.wav");
+    s->hit_block = al_load_sample("resources/sounds/hit2.wav");
+
+    if (!s->bgrd || !s->coin || !s->ball_up || !s->hit_wall || !s->hit_block)
+    {
+        destroy_sounds(&s);
+        fprintf(stderr, "Falha ao carregar audios\n");
+        return NULL;
+    }
+
+    return s;
+}
+
+void draw_text(ALLEGRO_FONT *font, ALLEGRO_COLOR color, float x, float y, int flags, const char *str)
+{
+    float font_offset;
+
+    font_offset = al_get_font_line_height(font)/2;
+    al_draw_text(font, al_map_rgb(255, 255, 255), x, y - font_offset, flags, str);
+}
+
+void draw_num(ALLEGRO_FONT *font, ALLEGRO_COLOR color, float x, float y, int flags, int num)
+{
+    float font_offset;
+
+    font_offset = al_get_font_line_height(font)/2;
+    al_draw_textf(font, color, x, y - font_offset, flags, "%d", num);
+}
+
+void draw_button(ALLEGRO_FONTS *fonts, ALLEGRO_COLOR color, box_t pos, const char *str, vec_t ms)
+{
+    ALLEGRO_FONT *f;
+    ALLEGRO_COLOR sel_color;
+    float font_offset;
+    vec_t text_pos;
+
+    f = fonts->r22;
+    font_offset = al_get_font_line_height(f)/2;
+    text_pos = vector_make(pos.x1 + pos.w/2, pos.y1 + pos.h/2 - font_offset);
+    sel_color = al_map_rgb_f(color.r*0.8, color.g*0.8, color.b*0.8);
+
+    if (box_inside(ms, pos))
+        al_draw_filled_rounded_rectangle(pos.x1, pos.y1, pos.x2, pos.y2, 30, 30, sel_color);
+    else
+        al_draw_filled_rounded_rectangle(pos.x1, pos.y1, pos.x2, pos.y2, 30, 30, color);
+        
+    al_draw_text(f, al_map_rgb(255, 255, 255), text_pos.x, text_pos.y, -1, str);
+}
+
+void draw_icon(const char *filename, ALLEGRO_COLOR color, circ_t pos, vec_t ms)
+{
+    ALLEGRO_BITMAP *img;
+    ALLEGRO_COLOR sel_color;
+    float img_offset;
+
+    img = load_bitmap_at_size(filename, pos.radius*1.2, pos.radius*1.2);
+
+    sel_color = al_map_rgb_f(color.r*0.8, color.g*0.8, color.b*0.8);
+
+    if (circle_inside(ms, pos))
+        al_draw_filled_circle(pos.x, pos.y, pos.radius, sel_color);
+    else
+        al_draw_filled_circle(pos.x, pos.y, pos.radius, color);
+    
+    if (img != NULL)
+    {
+        img_offset = al_get_bitmap_width(img)/2;
+        al_draw_bitmap(img, pos.x-img_offset, pos.y-img_offset, 0);
+    }
+}
+
+void destroy_fonts(ALLEGRO_FONTS **f)
+{
+    al_destroy_font((*f)->r18);
+    al_destroy_font((*f)->r22);
+    al_destroy_font((*f)->r26);
+    al_destroy_font((*f)->r30);
+    al_destroy_font((*f)->r40);
+    al_destroy_font((*f)->l60);
+    free(*f);
+    *f = NULL;
+}
+
+void destroy_sounds(ALLEGRO_SOUNDS **s)
+{
+    al_destroy_sample((*s)->bgrd);
+    al_destroy_sample((*s)->coin);
+    *s = NULL;
 }
 
 void end_engine(engine_t **e)

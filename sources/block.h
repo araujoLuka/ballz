@@ -3,7 +3,7 @@
 #define ROWS_B 10
 #define COLS_B 8
 
-typedef enum { BLOCK, BALL, COIN } type_b;
+typedef enum { NONE, BLOCK, BALL, COIN } type_b;
 
 typedef struct block nodo_bk;
 typedef struct matrix_row_control row_control;
@@ -30,6 +30,7 @@ struct block_matrix
 {
     nodo_bk *bl[ROWS_B][COLS_B];
     row_control rows[ROWS_B];
+    ALLEGRO_BITMAP *coin_img;
     int size;
     float space;
 };
@@ -51,15 +52,17 @@ void block_insert_row(matrix_bl *m, float x, float y, int points);
 int block_move(matrix_bl *m);
 
 // Tratamento para colisao com o bloco, retorna o tipo do bloco
-type_b block_resolve_collide(nodo_bk **bl, int *new_balls, int *coins, row_control *r);
+type_b block_resolve_collide(nodo_bk **bl, int *new_balls, int *coins, row_control *r, ALLEGRO_SOUNDS *s);
 
-int block_collide_bottom(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins);
+bool block_collision(nodo_bk *bl, nodo_b *b, float radius);
 
-int block_collide_left(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins);
+type_b block_collide_bottom(matrix_bl *m, nodo_b *b, float radius, int *nb, int *coins, ALLEGRO_SOUNDS *s);
 
-int block_collide_top(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins);
+type_b block_collide_left(matrix_bl *m, nodo_b *b, float radius, int *nb, int *coins, ALLEGRO_SOUNDS *s);
 
-int block_collide_right(matrix_bl *m, nodo_b *b, float raio, int *nb, int *coins);
+type_b block_collide_top(matrix_bl *m, nodo_b *b, float radius, int *nb, int *coins, ALLEGRO_SOUNDS *s);
+
+type_b block_collide_right(matrix_bl *m, nodo_b *b, float radius, int *nb, int *coins, ALLEGRO_SOUNDS *s);
 
 nodo_bk *block_get_by_quadrant(matrix_bl *m, float x, float y, int *i, int *j);
 

@@ -4,7 +4,7 @@
 
 #define MOVE_BLOCKS 1
 
-game_t *game_make(float scr_w, float scr_h)
+game_t *game_make(float scr_w, float scr_h, u_data **d)
 {
     game_t *gs;
 
@@ -17,7 +17,7 @@ game_t *game_make(float scr_w, float scr_h)
 
     gs->gm_box = box_make(0, SCR_H * 0.1, SCR_W, SCR_H * 0.8);
     gs->m = block_matrix_make(gs->gm_box.x2);
-    gs->b = ball_list_make(gs->gm_box.x2, gs->gm_box.y2);
+    gs->b = ball_list_make(gs->gm_box.x2, gs->gm_box.y2, (*d)->ball);
     if (!gs->m || !gs->b)
     {
         fprintf(stderr, "Falha ao alocar estruturas principais do jogo\n");
@@ -25,24 +25,28 @@ game_t *game_make(float scr_w, float scr_h)
         return NULL;
     }
 
+    gs->d = d;
+
     gs->points = 1;
-    gs->curr_t = 0;
-    gs->last_t = 0;
-    gs->delta_t = 0;
-    gs->scale = 1;
+    gs->high = (*d)->sb_scores[0];
+    if (gs->high == 0)
+        gs->high = 1;
     gs->coins = 0;
+
+    gs->scale = 1;
+
     gs->gst = ANIM;
 
     return gs;
 }
 
-int game_start(engine_t *e, game_t **gs, vec_t *start, vec_t *delta)
+int game_start(engine_t *e, game_t **gs, u_data **d, vec_t *start, vec_t *delta)
 {
-    if (!(*gs = game_make(SCR_W, SCR_H)))
+    if (!(*gs = game_make(SCR_W, SCR_H, d)))
         return 0;
 
     al_start_timer(e->timer);
-    (*gs)->last_t = al_get_time();
+    e->last_t = al_get_time();
     block_insert_row((*gs)->m, (*gs)->gm_box.x1, (*gs)->gm_box.y1, (*gs)->points);
     block_move((*gs)->m);
     ball_insert((*gs)->b, 0);
@@ -55,8 +59,6 @@ int game_start(engine_t *e, game_t **gs, vec_t *start, vec_t *delta)
 int game_update(engine_t *e, game_t *gs, bool *mspress, vec_t *aim1, vec_t *aim2, int *nb, float *lt)
 {
     g_states last;
-    gs->curr_t = al_get_time();
-    gs->delta_t = (gs->curr_t - gs->last_t) * gs->scale;
 
     // game_test(e, gs->b, nb);
 
@@ -84,24 +86,36 @@ int game_update(engine_t *e, game_t *gs, bool *mspress, vec_t *aim1, vec_t *aim2
         case STOP: return 0;
     }
 
+    e->curr_t = al_get_time();
+    e->delta_t = (e->curr_t - e->last_t);
+    e->last_t = e->curr_t;
+
     al_flip_display();
-    gs->last_t = gs->curr_t;
 
     return 1;
 }
 
 g_states game_events(engine_t *e, g_states gst, g_states lst, float *scale)
 {
+    vec_t ms;
+    box_t pause_area;
+
     al_get_mouse_state(&e->msestate);
     al_get_keyboard_state(&e->kbdstate);
 
     al_wait_for_event(e->queue, &e->event);
 
-   switch (e->event.type)
+    ms = vector_make(e->msestate.x, e->msestate.y);
+    pause_area = box_make(5, SCR_H*0.05-SCR_H*0.05/2, SCR_H*0.05, SCR_H*0.05);
+
+    switch (e->event.type)
     {
-    case ALLEGRO_EVENT_DISPLAY_CLOSE:
-        return STOP;
+        case ALLEGRO_EVENT_DISPLAY_CLOSE:
+            return STOP;
     }
+
+    if (al_mouse_button_down(&e->msestate, 1) && box_inside(ms, pause_area) && gst != PAUSE)
+        return PAUSE;
 
     if (al_key_down(&e->kbdstate, ALLEGRO_KEY_ESCAPE))
     {
@@ -129,7 +143,7 @@ g_states game_events(engine_t *e, g_states gst, g_states lst, float *scale)
     if (al_key_down(&e->kbdstate, ALLEGRO_KEY_F4))
     {
         if (gst == LAUNCH)
-            *scale = 2;
+            *scale = 1.5;
     }
 
     return gst;
@@ -143,6 +157,9 @@ void game_anim(engine_t *e, game_t *gs)
     {
         for (int i=gs->m->size; i >= 0; i-=2)
         {
+            e->curr_t = al_get_time();
+            e->delta_t = (e->curr_t - e->last_t);
+            e->last_t = e->curr_t;
             al_get_mouse_state(&e->msestate);
             game_draw(e, gs, NULL, i);
             al_flip_display();
@@ -153,6 +170,9 @@ void game_anim(engine_t *e, game_t *gs)
     {
         for (int i=1; i <= gs->m->size; i+=2)
         {
+            e->curr_t = al_get_time();
+            e->delta_t = (e->curr_t - e->last_t);
+            e->last_t = e->curr_t;
             al_get_mouse_state(&e->msestate);
             game_draw(e, gs, NULL, -i);
             al_draw_filled_rectangle(0, gb.y2, SCR_W, SCR_H, al_map_rgb(30, 30, 30));
@@ -176,6 +196,8 @@ void game_aim(engine_t *e, game_t *gs, bool *mspress, vec_t *start, vec_t *delta
     {
         delta->x = start->x - e->msestate.x * 1.5;
         delta->y = start->y - e->msestate.y * 1.5;
+        if (-delta->y > gs->gm_box.h*0.9)
+            delta->y = -gs->gm_box.h*0.9;
     }
 
     if (*mspress && !al_mouse_button_down(&e->msestate, 1))
@@ -215,9 +237,9 @@ void game_launch(engine_t *e, game_t *gs, vec_t *v, float *lt, int *nb)
                 ball->cy = b->first->cy;
                 
                 if (ball->cx < b->first->cx - 0.5)
-                    ball->cx += (b->first->cx - ball->cx) * 0.15f;
+                    ball->cx += (b->first->cx - ball->cx) * 0.1f;
                 else if (ball->cx > b->first->cx + 0.5)
-                    ball->cx -= (ball->cx - b->first->cx) * 0.15f;
+                    ball->cx -= (ball->cx - b->first->cx) * 0.1f;
                 else
                 {
                     ball->cx = b->first->cx;
@@ -228,7 +250,7 @@ void game_launch(engine_t *e, game_t *gs, vec_t *v, float *lt, int *nb)
         }
         else
         {
-            if (*lt >= 0.15 * i || ball->move == true)
+            if (*lt >= 0.1 * i || ball->move == true)
             {
                 if (ball->move == false)
                     b->n--;
@@ -236,16 +258,16 @@ void game_launch(engine_t *e, game_t *gs, vec_t *v, float *lt, int *nb)
                 ball->cy += (ball->sy) * (gs->scale);
                 ball->move = true;
                 
-                ball_collide_left(ball, b->raio, gs->gm_box.x1);
-                ball_collide_right(ball, b->raio, gs->gm_box.x2);
-                ball_collide_top(ball, b->raio, gs->gm_box.y1);
-                if (ball_collide_bottom(ball, b->raio, gs->gm_box.y2) && b->l_ctr == b->tam)
+                ball_collide_left(ball, b->radius, gs->gm_box.x1, e->sounds->hit_wall);
+                ball_collide_right(ball, b->radius, gs->gm_box.x2, e->sounds->hit_wall);
+                ball_collide_top(ball, b->radius, gs->gm_box.y1, e->sounds->hit_wall);
+                if (ball_collide_bottom(ball, b->radius, gs->gm_box.y2) && b->l_ctr == b->tam)
                 {
                     b->first = ball;
                     ball->move = false;
                     b->l_ctr -= 1;
                 }
-                ball_collide_block(ball, gs->m, b->raio, nb, &gs->coins);
+                ball_collide_block(ball, gs->m, b->radius, nb, &gs->coins, e->sounds);
             }
         }
         ball = ball->next;
@@ -260,13 +282,15 @@ void game_reset(engine_t *e, game_t *gs, vec_t *v, int *nb)
 {
     v->x = 0;
     v->y = 0;
-    gs->delta_t = 0;
+    e->delta_t = 0;
     gs->b->launch = false;
     gs->scale = 1;
     ball_insert(gs->b, *nb);
     *nb = 0;
     gs->gst = ANIM;
     gs->points += 1;
+    if (gs->points > gs->high)
+        gs->high = gs->points;
 
     if (gs->m->rows[ROWS_B-1].n_blocks > 0)
     {
@@ -291,12 +315,24 @@ void game_over(engine_t *e, game_t *gs)
 {
     vec_t ms_pos;
     box_t game_b, restart_b, menu_b;
+    bool new_best = false;
 
     ms_pos = vector_make(e->msestate.x, e->msestate.y);
 
     game_b = gs->gm_box;
     restart_b = box_make(game_b.x2*0.3, game_b.y2*0.6, game_b.x2*0.4, game_b.y2*0.12);
     menu_b = box_make(game_b.x2*0.3, game_b.y2*0.8, game_b.x2*0.4, game_b.y2*0.12);
+
+    if ((*gs->d)->sb_scores[0] < gs->high)
+    {
+        (*gs->d)->sb_scores[0] = gs->high;
+        strcpy((*gs->d)->sb_names[0], "LCA");
+        new_best = true;
+    }
+    (*gs->d)->coins += gs->coins;
+    gs->coins = 0;
+
+    data_record(*gs->d);
 
     if (al_mouse_button_down(&e->msestate, 1))
     {
@@ -307,7 +343,7 @@ void game_over(engine_t *e, game_t *gs)
     }
     else
     {
-        game_draw_over(e, gs, ms_pos, restart_b, menu_b);
+        game_draw_over(e, gs, ms_pos, restart_b, menu_b, new_best);
 
         gs->gst = OVER;
     }
@@ -368,11 +404,11 @@ void game_test(engine_t *e, game_t *gs, int *nb)
     if (al_key_down(&e->kbdstate, ALLEGRO_KEY_D))
         b->sx = 4;
     
-    ball_collide_left(b, gs->b->raio, gs->gm_box.x1);
-    ball_collide_right(b, gs->b->raio, gs->gm_box.x2);
-    ball_collide_top(b, gs->b->raio, gs->gm_box.y1);
-    ball_collide_bottom(b, gs->b->raio, gs->gm_box.y2 - gs->b->raio * 2 - 0.5);
-    ball_collide_block(b, gs->m, gs->b->raio, nb, &gs->coins);
+    ball_collide_left(b, gs->b->radius, gs->gm_box.x1, e->sounds->hit_wall);
+    ball_collide_right(b, gs->b->radius, gs->gm_box.x2, e->sounds->hit_wall);
+    ball_collide_top(b, gs->b->radius, gs->gm_box.y1, e->sounds->hit_wall);
+    ball_collide_bottom(b, gs->b->radius, gs->gm_box.y2 - gs->b->radius * 2 - 0.5);
+    ball_collide_block(b, gs->m, gs->b->radius, nb, &gs->coins, e->sounds);
     b->cx += b->sx;
     b->cy += b->sy;
 }
@@ -383,14 +419,28 @@ void game_draw(engine_t *e, game_t *gs, vec_t *vector, int anim)
     box_t g = gs->gm_box;
     matrix_bl *m = gs->m;
     vec_t b_ctr_pos;
+    ALLEGRO_BITMAP *pause;
+    float p_size;
+    double FPS;
 
     al_clear_to_color(al_map_rgb(30, 30, 30));
     al_draw_filled_rectangle(g.x1, g.y1, g.x2, g.y2, al_map_rgb(20, 20, 20));
-    al_draw_filled_circle(3*SCR_W/4 - b->raio*4, g.y1 * 0.5, b->raio*1.4, al_map_rgb(240,240,70));
-    al_draw_filled_circle(3*SCR_W/4 - b->raio*4, g.y1 * 0.5, b->raio, al_map_rgb(30,30,30));
-    al_draw_textf(e->fonts->f26, al_map_rgb(230,230,230), 3*SCR_W/4 + 5, g.y1 * 0.3, 1, "%d", gs->coins);
-    al_draw_textf(e->fonts->f26, al_map_rgb(230,230,230), SCR_W/2, g.y1 * 0.3, 1, "%d", gs->points);
+
+    p_size = g.y1*0.5;
+    pause = load_bitmap_at_size("resources/models/pause.png", p_size, p_size);
+    if (pause)
+        al_draw_bitmap(pause, 5, g.y1*0.5-p_size/2, 0);
+
+    draw_text(e->fonts->l10, al_map_rgb(255, 255, 255), SCR_W*0.2, g.y1*0.3, -1, "BEST");
+    draw_num(e->fonts->r30, al_map_rgb(255, 255, 255), SCR_W*0.2, g.y1*0.5, -1, gs->high);
     
+    draw_num(e->fonts->r30, al_map_rgb(255, 255, 255), SCR_W*0.5, g.y1*0.5, -1, gs->points);
+
+    al_draw_bitmap(gs->m->coin_img, SCR_W*0.87-25/2, g.y1*0.5-25/2, 0);
+    draw_num(e->fonts->r26, al_map_rgb(255, 255, 255), SCR_W*0.8, g.y1*0.5, 1, (*gs->d)->coins);
+    if (gs->coins > 0)
+        al_draw_textf(e->fonts->r18, al_map_rgb(150,230,150), SCR_W*0.8, g.y1*0.7, 1, "+ %d", gs->coins);
+
     ball_draw(b);
     block_draw(e, m, anim);
 
@@ -400,13 +450,13 @@ void game_draw(engine_t *e, game_t *gs, vec_t *vector, int anim)
         b_ctr_pos = vector_make(b->ini->cx, b->ini->cy);
         game_draw_aim(b, vector->x, vector->y);
         if (b->n > 0)
-            al_draw_textf(e->fonts->f18, al_map_rgb(255, 255, 255), b_ctr_pos.x, b_ctr_pos.y + 10, -1, "%d x", b->n);
+            al_draw_textf(e->fonts->r18, al_map_rgb(255, 255, 255), b_ctr_pos.x, b_ctr_pos.y + 10, -1, "%d x", b->n);
         break;
 
     case LAUNCH:
         b_ctr_pos = vector_make(vector->x, vector->y);
         if (b->n > 0)
-            al_draw_textf(e->fonts->f18, al_map_rgb(255, 255, 255), b_ctr_pos.x, b_ctr_pos.y + 10, -1, "%d x", b->n);
+            al_draw_textf(e->fonts->r18, al_map_rgb(255, 255, 255), b_ctr_pos.x, b_ctr_pos.y + 10, -1, "%d x", b->n);
         break;
 
     default:
@@ -414,47 +464,32 @@ void game_draw(engine_t *e, game_t *gs, vec_t *vector, int anim)
     }
 
     al_draw_bitmap(e->cursor, e->msestate.x, e->msestate.y, 0);
-}
 
-void game_draw_text(ALLEGRO_FONT *font, ALLEGRO_COLOR color, float x, float y, int flags, const char *str)
-{
-    float font_offset;
+    FPS = 1 / (e->delta_t);
+    al_draw_textf(e->fonts->l10, al_map_rgb(50,255,50), 5, 5, 0, "FPS: %d", (int)(FPS));
 
-    font_offset = al_get_font_line_height(font)/2;
-    al_draw_text(font, al_map_rgb(255, 255, 255), x, y - font_offset, flags, str);
-}
-
-void game_draw_num(ALLEGRO_FONT *font, ALLEGRO_COLOR color, float x, float y, int flags, int num)
-{
-    float font_offset;
-
-    font_offset = al_get_font_line_height(font)/2;
-    al_draw_textf(font, al_map_rgb(255, 255, 255), x, y - font_offset, flags, "%d", num);
-}
-
-void game_draw_button(ALLEGRO_FONT_STRUCT *fonts, ALLEGRO_COLOR color, box_t pos, const char *str)
-{
-    ALLEGRO_FONT *f;
-    float font_offset;
-    vec_t text_pos;
-
-    f = fonts->f22;
-    font_offset = al_get_font_line_height(f)/2;
-    text_pos = vector_make(pos.x1 + pos.w/2, pos.y1 + pos.h/2 - font_offset);
-
-    al_draw_filled_rounded_rectangle(pos.x1, pos.y1, pos.x2, pos.y2, 20, 20, color);
-    al_draw_text(f, al_map_rgb(255, 255, 255), text_pos.x, text_pos.y, -1, str);
+    al_destroy_bitmap(pause);
 }
 
 void game_draw_aim(ball_t *b, float dx, float dy)
 {
-    float aim_x, aim_y;
+    float aim_x, aim_y, r;
+    int n;
     aim_x = b->ini->cx;
     aim_y = b->ini->cy;
+    n = -dy/15;
+    r = b->radius*0.9;
 
     if (dy < -20)
     {
-        al_draw_line(aim_x, aim_y, aim_x + dx, aim_y + dy, al_map_rgb(255, 255, 255), 2);
+        for (int i=1; i <= n; i++)
+        {
+            if (n < 5)
+                n = 5;
+            else if (n >= 15)
+                n = 15;
+            al_draw_filled_circle(aim_x + (dx/n) * i, aim_y + (dy/n) * i, r, al_map_rgb(220, 220, 220));
+        }
     }
 }
 
@@ -467,18 +502,18 @@ void game_draw_pause(engine_t *e, vec_t mouse_pos, box_t gme_b, box_t rsm_b, box
     rst_c = al_map_rgb(234, 35, 94);
     mnu_c = al_map_rgb(0, 163, 150);
 
-    al_draw_filled_rectangle(0, 0, SCR_W, SCR_H, al_map_rgba(0, 0, 0, 150));
+    al_draw_filled_rectangle(0, 0, SCR_W, SCR_H, al_map_rgba(0, 0, 0, 200));
 
-    game_draw_text(e->fonts->f30, font_c, gme_b.x2 * 0.5, gme_b.y1 * 1.3, -1, "GAME PAUSED");
+    draw_text(e->fonts->r40, font_c, SCR_W*0.5, SCR_H*0.2, -1, "GAME PAUSED");
 
-    game_draw_button(e->fonts, rsm_c, rsm_b, "RESUME");
-    game_draw_button(e->fonts, rst_c, rst_b, "RESTART");
-    game_draw_button(e->fonts, mnu_c, mnu_b, "MAIN MENU");
+    draw_button(e->fonts, rsm_c, rsm_b, "RESUME", mouse_pos);
+    draw_button(e->fonts, rst_c, rst_b, "RESTART", mouse_pos);
+    draw_button(e->fonts, mnu_c, mnu_b, "MAIN MENU", mouse_pos);
 
     al_draw_bitmap(e->cursor,mouse_pos.x, mouse_pos.y, 0);
 }
 
-void game_draw_over(engine_t *e, game_t *gs, vec_t mouse_pos, box_t rst_b, box_t mnu_b)
+void game_draw_over(engine_t *e, game_t *gs, vec_t mouse_pos, box_t rst_b, box_t mnu_b, bool new_best)
 {
     ALLEGRO_COLOR font_c, rst_c, mnu_c;
 
@@ -488,13 +523,16 @@ void game_draw_over(engine_t *e, game_t *gs, vec_t mouse_pos, box_t rst_b, box_t
 
     al_draw_filled_rectangle(0, 0, SCR_W, SCR_H, al_map_rgb(20, 20, 20));
 
-    game_draw_text(e->fonts->f30, font_c, SCR_W*0.5, SCR_H*0.1, -1, "GAME OVER");
+    draw_text(e->fonts->r40, font_c, SCR_W*0.5, SCR_H*0.2, -1, "GAME OVER");
 
-    game_draw_text(e->fonts->f18, font_c, SCR_W*0.5, SCR_H*0.24, -1, "SCORE");
-    game_draw_num(e->fonts->f60, font_c, SCR_W*0.5, SCR_H*0.3, -1, gs->points);
+    if (new_best)
+        draw_text(e->fonts->r18, font_c, SCR_W*0.5, SCR_H*0.3, -1, "NEW HIGH SCORE");
+    else
+        draw_text(e->fonts->r18, font_c, SCR_W*0.5, SCR_H*0.3, -1, "SCORE");
+    draw_num(e->fonts->l60, font_c, SCR_W*0.5, SCR_H*0.38, -1, gs->points);
     
-    game_draw_button(e->fonts, rst_c, rst_b, "RESTART");
-    game_draw_button(e->fonts, mnu_c, mnu_b, "MAIN MENU");
+    draw_button(e->fonts, rst_c, rst_b, "RESTART", mouse_pos);
+    draw_button(e->fonts, mnu_c, mnu_b, "MAIN MENU", mouse_pos);
 
     al_draw_bitmap(e->cursor,mouse_pos.x, mouse_pos.y, 0);
 }

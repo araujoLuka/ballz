@@ -18,7 +18,7 @@ struct nodo_ball
 struct balls
 {
     ALLEGRO_BITMAP *img;
-    float raio;
+    float radius;
     nodo_b *ini;
     nodo_b *first;
     int tam, n;
@@ -28,7 +28,7 @@ struct balls
     bool launch;
 };
 
-ball_t *ball_list_make(float disp_w, float disp_h);
+ball_t *ball_list_make(float disp_w, float disp_h, int sel);
 
 nodo_b *ball_make(double x, double y);
 
@@ -38,15 +38,15 @@ void ball_launch(ball_t *b, vec_t *d, float scale);
 
 void ball_draw(ball_t *b);
 
-int ball_collide_left(nodo_b *b, float r, int lim);
+int ball_collide_left(nodo_b *b, float r, int lim, ALLEGRO_SAMPLE *sound);
 
-int ball_collide_right(nodo_b *b, float r, int lim);
+int ball_collide_right(nodo_b *b, float r, int lim, ALLEGRO_SAMPLE *sound);
 
-int ball_collide_top(nodo_b *b, float r, int lim);
+int ball_collide_top(nodo_b *b, float r, int lim, ALLEGRO_SAMPLE *sound);
 
 int ball_collide_bottom(nodo_b *b, float r, int lim);
 
-int ball_collide_block(nodo_b *b, matrix_bl *m, float r, int *nb, int *c);
+int ball_collide_block(nodo_b *b, matrix_bl *m, float radius, int *nb, int *coins, ALLEGRO_SOUNDS *s);
 
 void ball_list_destroy(ball_t **b);
 
