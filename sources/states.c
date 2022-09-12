@@ -154,14 +154,17 @@ void state_menu(engine_t *e, u_data *d, states *st)
 
         al_clear_to_color(al_map_rgb(20, 20, 20));
 
-        al_draw_bitmap(coin, SCR_W*0.96-25/2, SCR_H*0.05-25/2, 0);
-        draw_num(e->fonts->r26, al_map_rgb(255, 255, 255), SCR_W*0.89, SCR_H*0.05, 1, d->coins);
+        if (d != NULL)
+        {
+            al_draw_bitmap(coin, SCR_W*0.96-25/2, SCR_H*0.05-25/2, 0);
+            draw_num(e->fonts->r26, al_map_rgb(255, 255, 255), SCR_W*0.89, SCR_H*0.05, 1, d->coins);
+        }
 
         draw_text(e->fonts->l60, al_map_rgb(230, 230, 255), SCR_W/2, SCR_H*0.25, -1, "Ballz");
         draw_text(e->fonts->r30, al_map_rgb(230, 230, 255), SCR_W/2, SCR_H*0.3, -1, "Deluxe Edition");
         draw_text(e->fonts->l10, al_map_rgb(230, 230, 255), SCR_W/2, SCR_H*0.34, -1, "Beta");
 
-        if (d->sb_scores[0] > 0)
+        if (d != NULL && d->sb_scores[0] > 0)
         {
             draw_text(e->fonts->r18, al_map_rgb(255, 255, 255), SCR_W/2, SCR_H*0.5, -1, "HIGH SCORE");
             draw_num(e->fonts->r40, al_map_rgb(255, 255, 255), SCR_W/2, SCR_H*0.55, -1, d->sb_scores[0]);
@@ -271,12 +274,6 @@ void state_game(engine_t *e, u_data *d, states *st)
             play = false;
             break;
         }
-        (*gs->d)->sb_scores[0] = gs->high;
-        strcpy((*gs->d)->sb_names[0], "LCA");
-        (*gs->d)->coins += gs->coins;
-        gs->coins = 0;
-
-        data_record(*gs->d);
     }
 
     game_destroy(&gs);

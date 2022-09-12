@@ -17,7 +17,10 @@ game_t *game_make(float scr_w, float scr_h, u_data **d)
 
     gs->gm_box = box_make(0, SCR_H * 0.1, SCR_W, SCR_H * 0.8);
     gs->m = block_matrix_make(gs->gm_box.x2);
-    gs->b = ball_list_make(gs->gm_box.x2, gs->gm_box.y2, (*d)->ball);
+    if (d != NULL)
+        gs->b = ball_list_make(gs->gm_box.x2, gs->gm_box.y2, (*d)->ball);
+    else
+        gs->b = ball_list_make(gs->gm_box.x2, gs->gm_box.y2, 1);
     if (!gs->m || !gs->b)
     {
         fprintf(stderr, "Falha ao alocar estruturas principais do jogo\n");
@@ -26,9 +29,10 @@ game_t *game_make(float scr_w, float scr_h, u_data **d)
     }
 
     gs->d = d;
+    if (d != NULL)
+        gs->high = (*d)->sb_scores[0];
 
     gs->points = 1;
-    gs->high = (*d)->sb_scores[0];
     if (gs->high == 0)
         gs->high = 1;
     gs->coins = 0;
@@ -323,16 +327,19 @@ void game_over(engine_t *e, game_t *gs)
     restart_b = box_make(game_b.x2*0.3, game_b.y2*0.6, game_b.x2*0.4, game_b.y2*0.12);
     menu_b = box_make(game_b.x2*0.3, game_b.y2*0.8, game_b.x2*0.4, game_b.y2*0.12);
 
-    if ((*gs->d)->sb_scores[0] < gs->high)
+    if ((*gs->d) != NULL)
     {
-        (*gs->d)->sb_scores[0] = gs->high;
-        strcpy((*gs->d)->sb_names[0], "LCA");
-        new_best = true;
-    }
-    (*gs->d)->coins += gs->coins;
-    gs->coins = 0;
+        if ((*gs->d)->sb_scores[0] < gs->high)
+        {
+            (*gs->d)->sb_scores[0] = gs->high;
+            strcpy((*gs->d)->sb_names[0], "LCA");
+            new_best = true;
+        }
+        (*gs->d)->coins += gs->coins;
+        gs->coins = 0;
 
-    data_record(*gs->d);
+        data_record(*gs->d);
+    }
 
     if (al_mouse_button_down(&e->msestate, 1))
     {
@@ -437,9 +444,14 @@ void game_draw(engine_t *e, game_t *gs, vec_t *vector, int anim)
     draw_num(e->fonts->r30, al_map_rgb(255, 255, 255), SCR_W*0.5, g.y1*0.5, -1, gs->points);
 
     al_draw_bitmap(gs->m->coin_img, SCR_W*0.87-25/2, g.y1*0.5-25/2, 0);
-    draw_num(e->fonts->r26, al_map_rgb(255, 255, 255), SCR_W*0.8, g.y1*0.5, 1, (*gs->d)->coins);
-    if (gs->coins > 0)
-        al_draw_textf(e->fonts->r18, al_map_rgb(150,230,150), SCR_W*0.8, g.y1*0.7, 1, "+ %d", gs->coins);
+    if ((*gs->d) != NULL)
+    {
+        draw_num(e->fonts->r26, al_map_rgb(255, 255, 255), SCR_W*0.8, g.y1*0.5, 1, (*gs->d)->coins);
+        if (gs->coins > 0)
+            al_draw_textf(e->fonts->r18, al_map_rgb(150,230,150), SCR_W*0.8, g.y1*0.7, 1, "+ %d", gs->coins);
+    }
+    else
+        draw_num(e->fonts->r26, al_map_rgb(255, 255, 255), SCR_W*0.8, g.y1*0.5, 1, gs->coins);
 
     ball_draw(b);
     block_draw(e, m, anim);
@@ -454,6 +466,8 @@ void game_draw(engine_t *e, game_t *gs, vec_t *vector, int anim)
         break;
 
     case LAUNCH:
+        if (e->curr_t - gs->b->l_tmr > 6 && gs->scale == 1)
+            draw_text(e->fonts->r18, al_map_rgb(120, 120, 120), g.x2*0.97, g.y1*1.3, ALLEGRO_ALIGN_RIGHT, "Press F4 to speed-up");
         b_ctr_pos = vector_make(vector->x, vector->y);
         if (b->n > 0)
             al_draw_textf(e->fonts->r18, al_map_rgb(255, 255, 255), b_ctr_pos.x, b_ctr_pos.y + 10, -1, "%d x", b->n);

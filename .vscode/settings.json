@@ -10,6 +10,9 @@
         "allegro_audio.h": "c",
         "stdlib.h": "c",
         "stdio.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "allegro_acodec.h": "c",
+        "allegro_image.h": "c",
+        "allegro_font.h": "c"
     }
 }

@@ -3,22 +3,6 @@
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
-#define PROB_BLOCK 75
-#define PROB_BALL 100
-#define PROB_COIN 10
-
-/* 
- * Calcula um value aleatorio entre ini e fim e o retorna 
-*/
-int aleat (int ini, int fim)
-{
-    int tam, x_aleat;
-    
-    tam = fim - ini;
-    x_aleat = ini + (rand() % tam);
-    
-    return x_aleat;
-}
 
 matrix_bl *block_matrix_make(float g_w)
 {
@@ -50,6 +34,16 @@ void block_rwc_make(row_control *r)
         r[i].have_coin = false;
         r[i].have_ball = false;
     }
+}
+
+int aleat (int ini, int fim)
+{
+    int tam, x_aleat;
+    
+    tam = fim - ini;
+    x_aleat = ini + (rand() % tam);
+    
+    return x_aleat;
 }
 
 nodo_bk *block_make(float x, float y, float size, int space, int points, row_control *r)

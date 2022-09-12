@@ -1,3 +1,11 @@
+/* BALLZ TO LINUX 
+ *
+ * Author: Lucas Araujo
+ * Git: https://github.com/araujoLuka/ballz
+ * 
+ * Describe: This is the second project proposed by the discipline of Programming II of the Bachelor's Degree in Computer Science at UFPR.
+*/
+
 #include "sources/engine.h"
 #include "sources/states.h"
 #include <stdlib.h>
