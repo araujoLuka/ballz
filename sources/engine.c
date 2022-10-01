@@ -37,7 +37,7 @@ engine_t *start_engine()
     }
 
     al_hide_mouse_cursor(e->disp);
-    if (!(e->cursor = load_bitmap_at_size("resources/cursor/cursor.png", 30, 30)))
+    if (!(e->cursor = al_load_bitmap("resources/cursor/cursor.png")))
     {
         free(e);
         fprintf(stderr, "Falha ao criar cursor.\n");
@@ -115,43 +115,6 @@ int start_allegro()
     }
 
     return 1;
-}
-
-ALLEGRO_BITMAP *load_bitmap_at_size(const char *filename, int w, int h)
-{
-  ALLEGRO_BITMAP *resized_bmp, *loaded_bmp, *prev_target;
-
-  // 1. create a temporary bitmap of size we want
-  resized_bmp = al_create_bitmap(w, h);
-  if (!resized_bmp) return NULL;
-
-  // 2. load the bitmap at the original size
-  loaded_bmp = al_load_bitmap(filename);
-  if (!loaded_bmp)
-  {
-     al_destroy_bitmap(resized_bmp);
-     return NULL;
-  }
-
-  // 3. set the target bitmap to the resized bmp
-  prev_target = al_get_target_bitmap();
-  al_set_target_bitmap(resized_bmp);
-
-  // 4. copy the loaded bitmap to the resized bmp
-  al_draw_scaled_bitmap(loaded_bmp,
-     0, 0,                                // source origin
-     al_get_bitmap_width(loaded_bmp),     // source width
-     al_get_bitmap_height(loaded_bmp),    // source height
-     0, 0,                                // target origin
-     w, h,                                // target dimensions
-     0                                    // flags
-  );
-
-  // 5. restore the previous target and clean up
-  al_set_target_bitmap(prev_target);
-  al_destroy_bitmap(loaded_bmp);
-
-  return resized_bmp;      
 }
 
 ALLEGRO_FONTS *load_fonts()
@@ -251,7 +214,7 @@ void draw_icon(const char *filename, ALLEGRO_COLOR color, circ_t pos, vec_t ms)
     ALLEGRO_COLOR sel_color;
     float img_offset;
 
-    img = load_bitmap_at_size(filename, pos.radius*1.2, pos.radius*1.2);
+    img = al_load_bitmap(filename);
 
     sel_color = al_map_rgb_f(color.r*0.8, color.g*0.8, color.b*0.8);
 

@@ -74,6 +74,9 @@ void data_record(u_data *d)
     FILE *file;
 
     file = fopen("data/.udata.sve", "wb");
+    if (!file)
+        printf("Erro em salvar o jogo\n");
+    
     fwrite(d, sizeof(u_data), 1, file);
 }
 

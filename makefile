@@ -19,6 +19,9 @@ main.o: main.c sources/engine.h sources/states.h
 $(OBJECTS): bin/%.o : sources/%.c
 	gcc $(CFLAGS) -c $^ $(LIBS) -o $@
 
+tar: all
+	tar -czf ../ballz.tar.gz ../ballz/
+
 clean:
 	-rm -f bin/*.o *~f
 

@@ -13,7 +13,7 @@ void state_start(engine_t *e, u_data **d, states *st)
 
     t = 0;
     load_size = 60;
-    load = load_bitmap_at_size("resources/models/loading2.png", load_size, load_size);
+    load = al_load_bitmap("resources/models/loading2.png");
     yes_b = box_make(SCR_W*0.25, SCR_H*0.6, SCR_W*0.2, SCR_H*0.07);
     no_b = box_make(SCR_W*0.55, SCR_H*0.6, SCR_W*0.2, SCR_H*0.07);
 
@@ -109,7 +109,7 @@ void state_menu(engine_t *e, u_data *d, states *st)
     bool done = false;
     int FPS;
 
-    coin = load_bitmap_at_size("resources/models/coin1.png", 25, 25);
+    coin = al_load_bitmap("resources/models/coin1.png");
     e->last_t = al_get_time();
     play_button = box_make(SCR_W*0.35, SCR_H * 0.65, SCR_W*0.3, SCR_H*0.1);
     help_btn = circle_make(SCR_W*0.5, SCR_H * 0.85, SCR_H*0.04);
@@ -281,5 +281,6 @@ void state_game(engine_t *e, u_data *d, states *st)
         }
     }
 
+    data_record(*gs->d);
     game_destroy(&gs);
 }

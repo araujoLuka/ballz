@@ -21,7 +21,7 @@ matrix_bl *block_matrix_make(float g_w)
     block_rwc_make(m->rows);
     m->space = 4;
     m->size = g_w / (COLS_B);
-    m->coin_img = load_bitmap_at_size("resources/models/coin1.png", 25, 25);
+    m->coin_img = al_load_bitmap("resources/models/coin1.png");
 
     return m;
 }

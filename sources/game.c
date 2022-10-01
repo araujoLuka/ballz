@@ -18,7 +18,7 @@ game_t *game_make(float scr_w, float scr_h, u_data **d)
 
     gs->gm_box = box_make(0, SCR_H * 0.1, SCR_W, SCR_H * 0.8);
     gs->m = block_matrix_make(gs->gm_box.x2);
-    if (d != NULL)
+    if (*d != NULL)
         gs->b = ball_list_make(gs->gm_box.x2, gs->gm_box.y2, (*d)->ball);
     else
         gs->b = ball_list_make(gs->gm_box.x2, gs->gm_box.y2, 1);
@@ -335,7 +335,7 @@ void game_over(engine_t *e, game_t *gs)
     restart_b = box_make(game_b.x2*0.3, game_b.y2*0.6, game_b.x2*0.4, game_b.y2*0.12);
     menu_b = box_make(game_b.x2*0.3, game_b.y2*0.8, game_b.x2*0.4, game_b.y2*0.12);
 
-    if ((*gs->d) != NULL)
+    if (gs->d != NULL)
     {
         if ((*gs->d)->sb_scores[0] < gs->high)
         {
@@ -345,8 +345,6 @@ void game_over(engine_t *e, game_t *gs)
         }
         (*gs->d)->coins += gs->coins;
         gs->coins = 0;
-
-        data_record(*gs->d);
     }
 
     if (al_mouse_button_down(&e->msestate, 1))
@@ -442,7 +440,7 @@ void game_draw(engine_t *e, game_t *gs, vec_t *vector, int anim)
     al_draw_filled_rectangle(g.x1, g.y1, g.x2, g.y2, al_map_rgb(20, 20, 20));
 
     p_size = g.y1*0.5;
-    pause = load_bitmap_at_size("resources/models/pause.png", p_size, p_size);
+    pause = al_load_bitmap("resources/models/pause.png");
     if (pause)
         al_draw_bitmap(pause, 5, g.y1*0.5-p_size/2, 0);
 
@@ -499,7 +497,7 @@ void game_draw_aim(ball_t *b, float dx, float dy)
     int n;
     aim_x = b->ini->cx;
     aim_y = b->ini->cy;
-    n = -dy/15;
+    n = -dy/20;
     r = b->radius*0.9;
 
     if (dy < -20)
@@ -508,9 +506,9 @@ void game_draw_aim(ball_t *b, float dx, float dy)
         {
             if (n < 5)
                 n = 5;
-            else if (n >= 15)
-                n = 15;
-            al_draw_filled_circle(aim_x + (dx/n) * i, aim_y + (dy/n) * i, r, al_map_rgb(220, 220, 220));
+            else if (n >= 20)
+                n = 20;
+            al_draw_filled_circle(aim_x + (dx/n) * i, aim_y + (dy/n) * i, r*0.9, al_map_rgba(220, 220, 220, 10));
         }
     }
 }

@@ -23,7 +23,7 @@ ball_t *ball_list_make(float disp_w, float disp_h, int sel)
     strcpy(ball_path, "./resources/models/ball_");
     strcat(ball_path, c);
     strcat(ball_path, ".png");
-    b->img = load_bitmap_at_size(ball_path, ball_size, ball_size);
+    b->img = al_load_bitmap(ball_path);
     b->vel = 15;
     b->radius = ball_size / 2;
 

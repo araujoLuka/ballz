@@ -72,9 +72,6 @@ engine_t *start_engine();
 // Inicia os componentes principais do Allegro
 int start_allegro();
 
-// Carrega uma imagem com tamanho personalizado
-ALLEGRO_BITMAP *load_bitmap_at_size(const char *filename, int w, int h);
-
 // Cria a estrutura de fontes
 ALLEGRO_FONTS *load_fonts();
 
