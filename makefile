@@ -3,7 +3,7 @@ LIBS = -lallegro `pkg-config --libs $(AL_LIBS)` -lm
 AL_LIBS = allegro-5 allegro_font-5 allegro_image-5 allegro_primitives-5 allegro_ttf-5 allegro_audio-5 allegro_acodec-5
 PROGRAM = ballz
 SOURCES=$(wildcard sources/*.c)
-OBJECTS=$(patsubst sources/%.c, bin/%.o, $(SOURCES))
+OBJECTS=$(patsubst sources/%.c, obj/%.o, $(SOURCES))
 
 all: $(PROGRAM)
 
@@ -11,19 +11,21 @@ play: all
 	./$(PROGRAM)
 
 $(PROGRAM): main.o $(OBJECTS)
-	gcc $(CFLAGS) bin/main.o $(OBJECTS) -o $(PROGRAM) $(LIBS)
+	gcc $(CFLAGS) obj/* -o $(PROGRAM) $(LIBS)
 
 main.o: main.c sources/engine.h sources/states.h
-	gcc $(CFLAGS) -c main.c -o bin/main.o $(LIBS)
+	@mkdir -p obj
+	gcc $(CFLAGS) -c main.c -o obj/main.o $(LIBS)
 
-$(OBJECTS): bin/%.o : sources/%.c
+$(OBJECTS): obj/%.o : sources/%.c
+	@mkdir -p obj
 	gcc $(CFLAGS) -c $^ $(LIBS) -o $@
 
-tar: all
-	tar -czf ../ballz.tar.gz ../ballz/
+tar: purge
+	tar -czf ballz.tar.gz ../ballz/
 
 clean:
-	-rm -f bin/*.o *~f
+	-rm -rf obj/ *~f
 
 purge: clean
 	-rm -f $(PROGRAM)
